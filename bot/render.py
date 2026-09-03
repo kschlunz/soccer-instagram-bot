@@ -17,6 +17,7 @@ HEADER_HEIGHT = 250
 FOOTER_HEIGHT = 110
 SECTION_HEADER_H = 74
 ROW_H = 66
+ROW_H_WITH_CHANNEL = 92  # two lines: teams, then the exact US channel underneath
 MAX_PAGES = 10  # Instagram carousel limit
 
 BG = (11, 29, 42)
@@ -70,10 +71,15 @@ def paginate(matches: Sequence[Match], max_pages: int = MAX_PAGES) -> list[list[
     current: list[_Line] = []
     used = 0
     current_comp: str | None = None
+    fully_covered = {
+        comp for comp in {m.competition for m in matches}
+        if all(m.channel for m in matches if m.competition == comp)
+    }
 
     for index, match in enumerate(matches):
         needs_header = match.competition != current_comp
-        needed = ROW_H + (SECTION_HEADER_H if needs_header else 0)
+        row_h = _row_h(match)
+        needed = row_h + (SECTION_HEADER_H if needs_header else 0)
         if used + needed > usable:
             pages.append(current)
             if len(pages) == max_pages:
@@ -86,18 +92,22 @@ def paginate(matches: Sequence[Match], max_pages: int = MAX_PAGES) -> list[list[
                 return pages
             current, used = [], 0
             needs_header = True
-            needed = ROW_H + SECTION_HEADER_H
+            needed = row_h + SECTION_HEADER_H
             label = f"{match.competition} (cont.)" if match.competition == current_comp else match.competition
         else:
             label = match.competition
         if needs_header:
-            current.append(_Line("section", label, tv=match.tv))
+            current.append(_Line("section", label, tv=None if match.competition in fully_covered else match.tv))
             current_comp = match.competition
         current.append(_Line("match", match=match))
         used += needed
     if current:
         pages.append(current)
     return pages
+
+
+def _row_h(match: Match) -> int:
+    return ROW_H_WITH_CHANNEL if match.channel else ROW_H
 
 
 def _ellipsize(draw: ImageDraw.ImageDraw, text: str, font, max_width: int) -> str:
@@ -151,6 +161,7 @@ def render_page(
     time_font = _font(True, 28)
     team_font = _font(False, 32)
     vs_font = _font(False, 24)
+    channel_font = _font(False, 22)
     more_font = _font(False, 30)
 
     y = HEADER_HEIGHT
@@ -176,10 +187,11 @@ def render_page(
         elif line.kind == "match":
             m = line.match
             assert m is not None
+            row_h = _row_h(m)
             if stripe:
-                draw.rectangle([MARGIN - 16, y, WIDTH - MARGIN + 16, y + ROW_H], fill=BG_STRIPE)
+                draw.rectangle([MARGIN - 16, y, WIDTH - MARGIN + 16, y + row_h], fill=BG_STRIPE)
             stripe = not stripe
-            # Time pill
+            # Time pill (kept at the standard height, vertically aligned with the team line)
             label = m.time_label(twelve_hour)
             pill_top, pill_bottom = y + 12, y + ROW_H - 12
             draw.rounded_rectangle([MARGIN, pill_top, MARGIN + time_col_w, pill_bottom], radius=10, fill=TIME_BG)
@@ -196,7 +208,11 @@ def render_page(
             draw.text((text_x + side_w - hw, text_y), home, font=team_font, fill=TEXT)
             draw.text((text_x + side_w + (vs_w - draw.textlength(vs, font=vs_font)) / 2, text_y + 6), vs, font=vs_font, fill=MUTED)
             draw.text((text_x + side_w + vs_w, text_y), away, font=team_font, fill=TEXT)
-            y += ROW_H
+            if m.channel:
+                ch = _ellipsize(draw, m.channel, channel_font, text_w)
+                cw = draw.textlength(ch, font=channel_font)
+                draw.text((text_x + (text_w - cw) / 2, y + ROW_H - 10), ch, font=channel_font, fill=MUTED)
+            y += row_h
         elif line.kind == "more":
             y += 18
             draw.text((MARGIN, y), line.text, font=more_font, fill=MUTED)

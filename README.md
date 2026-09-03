@@ -19,6 +19,7 @@ How it works, once a day:
 soccer-instagram-bot/
   bot/main.py        CLI entry point
   bot/fixtures.py    football-data.org client, timezone handling, sorting
+  bot/espn.py        per-match US channel from ESPN's scoreboard feed (best effort)
   bot/render.py      Pillow image renderer + pagination
   bot/caption.py     caption text
   bot/hosting.py     pushes images to the images branch with git plumbing
@@ -91,6 +92,7 @@ Optional **Variables**:
 | `COMPETITIONS` | all | Comma-separated codes, e.g. `PL,PD,BL1,SA,FL1,CL` |
 | `IG_API_BASE` | `https://graph.facebook.com/v21.0` | Use `https://graph.instagram.com/v21.0` for Instagram Login tokens |
 | `POST_WHEN_EMPTY` | `false` | Post a "no matches today" image on quiet days |
+| `ESPN_ENRICH` | `true` | Look up per-match US channels from ESPN |
 | `HASHTAGS` | `#soccer #football ...` | Caption footer |
 | `IG_HANDLE` | none | Handle printed in the image footer, e.g. `@dailykickoffs` |
 
@@ -100,10 +102,16 @@ Bundesliga, `SA` Serie A, `FL1` Ligue 1, `DED` Eredivisie, `PPL` Primeira Liga,
 
 ### 4. Where to watch (USA)
 
-Each competition header shows the US English-language rights holder, taken from
-`bot/data/us_broadcasters.json`. football-data.org does not provide per-match TV
-listings, so this is per competition (for example every Premier League match shows
-"NBC, USA Network & Peacock" rather than which of the three has that game).
+Two layers:
+
+- **Per match.** After fetching fixtures the bot asks ESPN's public scoreboard feed which
+  US network carries each game and prints it on the row ("USA Network", "Peacock",
+  "Paramount+"...). This feed is free and needs no key, but it is undocumented, so it is
+  treated as best effort: if ESPN is down or has no listing, the match simply falls back
+  to the next layer. Set the `ESPN_ENRICH` variable to `false` to turn it off.
+- **Per competition.** Each competition header shows the US English-language rights holder
+  from `bot/data/us_broadcasters.json`. It is hidden when every match in that competition
+  already has its own channel.
 
 Current values, checked for the 2026-27 season:
 

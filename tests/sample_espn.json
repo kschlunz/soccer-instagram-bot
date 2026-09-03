@@ -1,0 +1,68 @@
+{
+  "events": [
+    {
+      "id": "1", "date": "2026-09-05T11:30Z", "name": "Chelsea at Arsenal",
+      "competitions": [{
+        "date": "2026-09-05T11:30Z",
+        "competitors": [
+          {"homeAway": "home", "team": {"displayName": "Arsenal", "shortDisplayName": "Arsenal", "abbreviation": "ARS"}},
+          {"homeAway": "away", "team": {"displayName": "Chelsea", "shortDisplayName": "Chelsea", "abbreviation": "CHE"}}
+        ],
+        "broadcasts": [{"market": "national", "names": ["USA Net"]}],
+        "geoBroadcasts": [
+          {"type": {"shortName": "TV"}, "market": {"type": "National"}, "media": {"shortName": "USA Net"}, "lang": "en", "region": "us"},
+          {"type": {"shortName": "Streaming"}, "market": {"type": "National"}, "media": {"shortName": "Peacock"}, "lang": "en", "region": "us"},
+          {"type": {"shortName": "TV"}, "market": {"type": "National"}, "media": {"shortName": "Telemundo"}, "lang": "es", "region": "us"}
+        ]
+      }]
+    },
+    {
+      "id": "2", "date": "2026-09-05T14:00Z", "name": "Brighton & Hove Albion at Wolverhampton Wanderers",
+      "competitions": [{
+        "date": "2026-09-05T14:00Z",
+        "competitors": [
+          {"homeAway": "home", "team": {"displayName": "Wolverhampton Wanderers", "shortDisplayName": "Wolves"}},
+          {"homeAway": "away", "team": {"displayName": "Brighton & Hove Albion", "shortDisplayName": "Brighton"}}
+        ],
+        "geoBroadcasts": [
+          {"market": {"type": "National"}, "media": {"shortName": "Peacock"}, "lang": "en", "region": "us"}
+        ]
+      }]
+    },
+    {
+      "id": "3", "date": "2026-09-05T16:30Z", "name": "Tottenham at Man City",
+      "competitions": [{
+        "date": "2026-09-05T16:30Z",
+        "competitors": [
+          {"homeAway": "home", "team": {"displayName": "Manchester City", "shortDisplayName": "Man City"}},
+          {"homeAway": "away", "team": {"displayName": "Tottenham Hotspur", "shortDisplayName": "Tottenham"}}
+        ],
+        "geoBroadcasts": [
+          {"market": {"type": "National"}, "media": {"shortName": "NBC"}, "lang": "en", "region": "us"}
+        ]
+      }]
+    },
+    {
+      "id": "4", "date": "2026-09-05T19:00Z", "name": "Barcelona at Real Madrid",
+      "competitions": [{
+        "date": "2026-09-05T19:00Z",
+        "competitors": [
+          {"homeAway": "home", "team": {"displayName": "Real Madrid"}},
+          {"homeAway": "away", "team": {"displayName": "Barcelona"}}
+        ],
+        "geoBroadcasts": []
+      }]
+    },
+    {
+      "id": "5", "date": "2026-09-05T19:00Z", "name": "Decoy same kickoff, different teams",
+      "competitions": [{
+        "date": "2026-09-05T19:00Z",
+        "competitors": [
+          {"homeAway": "home", "team": {"displayName": "Getafe"}},
+          {"homeAway": "away", "team": {"displayName": "Valencia"}}
+        ],
+        "geoBroadcasts": [{"market": {"type": "National"}, "media": {"shortName": "ESPN+"}, "lang": "en", "region": "us"}]
+      }]
+    }
+  ]
+}

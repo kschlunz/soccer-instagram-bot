@@ -41,6 +41,7 @@ class Config:
     images_branch: str = "soccer-bot-images"
     hashtags: str = "#soccer #football #matchday #fixtures"
     keep_days: int = 30
+    espn_enrich: bool = True
 
     @property
     def tz(self) -> ZoneInfo:
@@ -69,6 +70,7 @@ class Config:
             images_branch=os.environ.get("IMAGES_BRANCH") or "soccer-bot-images",
             hashtags=os.environ.get("HASHTAGS", cls.hashtags),
             keep_days=int(os.environ.get("IMAGES_KEEP_DAYS") or 30),
+            espn_enrich=_bool(os.environ.get("ESPN_ENRICH"), True),
         )
         if require_secrets:
             missing = [

@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .caption import build_caption
 from .config import Config
+from .espn import enrich
 from .fixtures import fetch_matches, normalise
 from .hosting import publish_images, wait_until_public
 from .instagram import InstagramClient
@@ -43,6 +44,8 @@ def run(argv: list[str] | None = None) -> int:
     else:
         matches = fetch_matches(cfg.football_token, day, tz, cfg.competitions)
     log.info("%d matches on %s (%s)", len(matches), day, cfg.timezone)
+    if matches and cfg.espn_enrich and not args.sample:
+        matches = enrich(matches)
 
     if not matches and not cfg.post_when_empty:
         log.info("No matches today and POST_WHEN_EMPTY is off; nothing to post.")

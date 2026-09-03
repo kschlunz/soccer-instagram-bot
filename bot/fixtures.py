@@ -41,7 +41,8 @@ class Match:
     home_score: int | None = None
     away_score: int | None = None
     stage: str | None = None
-    tv: str | None = None  # where to watch (US broadcaster), if known
+    tv: str | None = None  # where to watch this competition in the US (fallback)
+    channel: str | None = None  # exact US channel for this match, when a per-match source knows it
 
     def time_label(self, twelve_hour: bool = True) -> str:
         """Short label for the time column: kickoff time, or the state of the match."""

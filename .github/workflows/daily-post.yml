@@ -50,6 +50,7 @@ jobs:
           TZ_LABEL: ${{ vars.TZ_LABEL }}
           COMPETITIONS: ${{ vars.COMPETITIONS }}
           POST_WHEN_EMPTY: ${{ vars.POST_WHEN_EMPTY || 'false' }}
+          ESPN_ENRICH: ${{ vars.ESPN_ENRICH || 'true' }}
           HASHTAGS: "${{ vars.HASHTAGS || '#soccer #football #matchday #fixtures #futbol' }}"
           IG_HANDLE: ${{ vars.IG_HANDLE }}
           GIT_AUTHOR_NAME: github-actions[bot]

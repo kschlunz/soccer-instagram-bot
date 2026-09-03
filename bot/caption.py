@@ -18,17 +18,25 @@ def build_caption(
     if not matches:
         lines.append("No matches scheduled today. Rest day!")
     else:
+        # Show the competition-level "where to watch" only when some match lacks its own channel.
+        fully_covered = {
+            comp for comp in {m.competition for m in matches}
+            if all(m.channel for m in matches if m.competition == comp)
+        }
         current = None
         for m in matches:
             if m.competition != current:
                 if current is not None:
                     lines.append("")
                 lines.append(f"🏆 {m.competition}")
-                if m.tv:
+                if m.tv and m.competition not in fully_covered:
                     lines.append(f"📺 {m.tv}")
                 current = m.competition
             middle = m.score_label or "vs"
-            lines.append(f"{m.time_label(twelve_hour)}  {m.home} {middle} {m.away}")
+            row = f"{m.time_label(twelve_hour)}  {m.home} {middle} {m.away}"
+            if m.channel:
+                row += f" · {m.channel}"
+            lines.append(row)
 
     body = "\n".join(lines).rstrip()
     footer = f"\n\n{hashtags.strip()}" if hashtags.strip() else ""
