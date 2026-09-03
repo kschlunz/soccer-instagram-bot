@@ -46,6 +46,8 @@ NETWORK_NAMES = {
     "CBSSN": "CBS Sports Network",
     "beIN SPORTS": "beIN Sports",
     "beIN Sports": "beIN Sports",
+    "ESPN Unlmtd": "ESPN Unlimited",
+    "CBSSN": "CBS Sports Network",
     "ESPN Deportes": None,  # Spanish-language feeds are skipped
     "Telemundo": None,
     "Universo": None,

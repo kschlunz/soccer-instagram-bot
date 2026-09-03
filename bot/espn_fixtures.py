@@ -177,7 +177,7 @@ def _status(comp: dict[str, Any], event: dict[str, Any]) -> str:
 
 def _team_name(competitor: dict[str, Any]) -> str:
     team = competitor.get("team") or {}
-    name = team.get("shortDisplayName") or team.get("displayName") or team.get("name") or "TBD"
+    name = (team.get("shortDisplayName") or team.get("displayName") or team.get("name") or "TBD").strip()
     rank = (competitor.get("curatedRank") or {}).get("current")
     if isinstance(rank, int) and 1 <= rank <= 25:
         return f"#{rank} {name}"
