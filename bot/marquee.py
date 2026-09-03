@@ -54,7 +54,8 @@ def reason_for(match: Match, rivalries: dict[str, list[list[str]]]) -> str | Non
     stage = (match.stage or "").strip()
     if stage.upper() in KNOCKOUT_STAGES:
         return KNOCKOUT_STAGES[stage.upper()]
-    if stage and any(w in stage.lower() for w in KNOCKOUT_WORDS) and "round of" not in stage.lower():
+    low = stage.lower()
+    if stage and any(w in low for w in KNOCKOUT_WORDS) and "round of" not in low and "quarter" not in low:
         return stage
 
     # 2. Rivalry

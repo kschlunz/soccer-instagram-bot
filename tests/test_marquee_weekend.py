@@ -42,6 +42,8 @@ def test_rivalries_rankings_and_knockouts_are_marquee():
     assert reason_for(_m(stage="SEMI_FINALS", competition_code="CL"), riv) == "Semifinal"
     assert reason_for(_m(stage="NWSL Playoffs - Semifinal", competition_code="NWSL"), riv) == "NWSL Playoffs - Semifinal"
     assert reason_for(_m(stage="Round of 16", competition_code="CL"), riv) is None
+    assert reason_for(_m(stage="Quarterfinals", competition_code="WTA"), riv) is None  # "final" inside "quarterfinals"
+    assert reason_for(_m(stage="Final", competition_code="WTA"), riv) == "Final"
     assert reason_for(_m(stage="REGULAR_SEASON"), riv) is None
 
 
