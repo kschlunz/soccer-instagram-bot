@@ -5,6 +5,23 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
+PROFILES: dict[str, dict[str, str]] = {
+    "soccer": {
+        "title": "TODAY'S MATCHES",
+        "caption_title": "⚽ Today's matches",
+        "images_subdir": "posts",
+        "hashtags": "#soccer #football #matchday #fixtures #futbol",
+        "broadcasters_file": "us_broadcasters.json",
+    },
+    "womens": {
+        "title": "TODAY IN WOMEN'S SPORTS",
+        "caption_title": "🏟️ Today in women's sports",
+        "images_subdir": "posts-womens",
+        "hashtags": "#womenssports #nwsl #wnba #womenssoccer #watchwomenssports",
+        "broadcasters_file": "us_broadcasters_womens.json",
+    },
+}
+
 # Friendly labels for common US zones; these cover both standard and daylight time.
 TZ_LABELS = {
     "America/New_York": "ET",
@@ -32,6 +49,7 @@ class Config:
     football_token: str
     ig_user_id: str
     ig_access_token: str
+    profile: str = "soccer"
     ig_api_base: str = "https://graph.facebook.com/v21.0"
     timezone: str = "America/New_York"
     tz_label_override: str | None = None
@@ -47,6 +65,10 @@ class Config:
     def tz(self) -> ZoneInfo:
         return ZoneInfo(self.timezone)
 
+    @property
+    def settings(self) -> dict[str, str]:
+        return PROFILES[self.profile]
+
     def tz_label(self, day: date) -> str:
         """Label shown next to times, e.g. 'ET'. Falls back to the zone abbreviation for `day`."""
         if self.tz_label_override:
@@ -57,10 +79,14 @@ class Config:
 
     @classmethod
     def from_env(cls, require_secrets: bool = True) -> "Config":
+        profile = (os.environ.get("PROFILE") or "soccer").strip().lower()
+        if profile not in PROFILES:
+            raise SystemExit(f"Unknown PROFILE {profile!r}; choose one of {', '.join(PROFILES)}")
         cfg = cls(
             football_token=os.environ.get("FOOTBALL_DATA_TOKEN", ""),
             ig_user_id=os.environ.get("IG_USER_ID", ""),
             ig_access_token=os.environ.get("IG_ACCESS_TOKEN", ""),
+            profile=profile,
             ig_api_base=os.environ.get("IG_API_BASE") or cls.ig_api_base,
             timezone=os.environ.get("TIMEZONE") or cls.timezone,
             tz_label_override=os.environ.get("TZ_LABEL") or None,
@@ -68,20 +94,15 @@ class Config:
             competitions=_csv(os.environ.get("COMPETITIONS")),
             post_when_empty=_bool(os.environ.get("POST_WHEN_EMPTY"), False),
             images_branch=os.environ.get("IMAGES_BRANCH") or "soccer-bot-images",
-            hashtags=os.environ.get("HASHTAGS", cls.hashtags),
+            hashtags=os.environ.get("HASHTAGS") or PROFILES[profile]["hashtags"],
             keep_days=int(os.environ.get("IMAGES_KEEP_DAYS") or 30),
             espn_enrich=_bool(os.environ.get("ESPN_ENRICH"), True),
         )
         if require_secrets:
-            missing = [
-                name
-                for name, value in (
-                    ("FOOTBALL_DATA_TOKEN", cfg.football_token),
-                    ("IG_USER_ID", cfg.ig_user_id),
-                    ("IG_ACCESS_TOKEN", cfg.ig_access_token),
-                )
-                if not value
-            ]
+            required = [("IG_USER_ID", cfg.ig_user_id), ("IG_ACCESS_TOKEN", cfg.ig_access_token)]
+            if profile == "soccer":
+                required.insert(0, ("FOOTBALL_DATA_TOKEN", cfg.football_token))
+            missing = [name for name, value in required if not value]
             if missing:
                 raise SystemExit(f"Missing required environment variables: {', '.join(missing)}")
         # Validate the timezone early so a typo fails loudly.

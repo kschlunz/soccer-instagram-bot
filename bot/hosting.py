@@ -40,8 +40,32 @@ def repo_slug() -> str:
     return f"{match.group(1)}/{match.group(2)}"
 
 
-def publish_images(paths: Sequence[Path], branch: str, keep_days: int = 30, remote: str = "origin") -> list[str]:
-    """Commit `paths` under posts/ on `branch` (creating it if needed) and return raw URLs."""
+def publish_images(
+    paths: Sequence[Path],
+    branch: str,
+    keep_days: int = 30,
+    remote: str = "origin",
+    subdir: str = IMAGE_DIR,
+    attempts: int = 3,
+) -> list[str]:
+    """Commit `paths` under `subdir/` on `branch` (creating it if needed) and return raw URLs.
+
+    Two profiles may post around the same time, so a rejected (non-fast-forward)
+    push is retried against the freshly fetched branch tip.
+    """
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return _publish_once(paths, branch, keep_days, remote, subdir)
+        except RuntimeError as err:
+            last_error = err
+            if "push" not in str(err) or attempt == attempts:
+                raise
+            time.sleep(3 * attempt)
+    raise RuntimeError(f"push failed after {attempts} attempts: {last_error}")
+
+
+def _publish_once(paths: Sequence[Path], branch: str, keep_days: int, remote: str, subdir: str) -> list[str]:
     slug = repo_slug()
     _git("fetch", remote, f"+refs/heads/{branch}:refs/remotes/{remote}/{branch}", check=False)
     parent = _git("rev-parse", "--verify", "--quiet", f"refs/remotes/{remote}/{branch}", check=False) or None
@@ -55,7 +79,7 @@ def publish_images(paths: Sequence[Path], branch: str, keep_days: int = 30, remo
 
         if parent:
             _git("read-tree", parent, env=env)
-            _prune_old(parent, keep_days, env)
+            _prune_old(parent, keep_days, env, subdir)
         else:
             readme = _hash_stdin("Generated images for the soccer Instagram bot.\n", env)
             _git("update-index", "--add", "--cacheinfo", f"100644,{readme},README.md", env=env)
@@ -63,12 +87,12 @@ def publish_images(paths: Sequence[Path], branch: str, keep_days: int = 30, remo
         rel_paths = []
         for path in paths:
             blob = _git("hash-object", "-w", str(path), env=env)
-            rel = f"{IMAGE_DIR}/{path.name}"
+            rel = f"{subdir}/{path.name}"
             _git("update-index", "--add", "--cacheinfo", f"100644,{blob},{rel}", env=env)
             rel_paths.append(rel)
 
         tree = _git("write-tree", env=env)
-        message = f"Add images for {paths[0].stem.rsplit('-', 1)[0] if paths else date.today()}"
+        message = f"Add {subdir} images for {paths[0].stem.rsplit('-', 1)[0] if paths else date.today()}"
         commit_args = ["commit-tree", tree, "-m", message]
         if parent:
             commit_args += ["-p", parent]
@@ -84,13 +108,13 @@ def _hash_stdin(content: str, env: dict[str, str]) -> str:
     return result.stdout.strip()
 
 
-def _prune_old(parent: str, keep_days: int, env: dict[str, str]) -> None:
-    """Drop posts/YYYY-MM-DD-*.jpg entries older than keep_days from the index."""
+def _prune_old(parent: str, keep_days: int, env: dict[str, str], subdir: str = IMAGE_DIR) -> None:
+    """Drop <subdir>/YYYY-MM-DD-*.jpg entries older than keep_days from the index."""
     if keep_days <= 0:
         return
     cutoff = date.today() - timedelta(days=keep_days)
     for entry in _git("ls-tree", "-r", "--name-only", parent, env=env).splitlines():
-        match = re.match(rf"{IMAGE_DIR}/(\d{{4}}-\d{{2}}-\d{{2}})-\d+\.jpg$", entry)
+        match = re.match(rf"{re.escape(subdir)}/(\d{{4}}-\d{{2}}-\d{{2}})-\d+\.jpg$", entry)
         if match and date.fromisoformat(match.group(1)) < cutoff:
             _git("update-index", "--force-remove", entry, env=env)
 

@@ -43,6 +43,15 @@ class Match:
     stage: str | None = None
     tv: str | None = None  # where to watch this competition in the US (fallback)
     channel: str | None = None  # exact US channel for this match, when a per-match source knows it
+    sport: str = "soccer"
+
+    def display_pair(self) -> tuple[str, str, str]:
+        """(left, middle, right) as it should read: 'Home vs Away' for soccer, 'Away at Home' for US sports."""
+        if self.sport == "soccer":
+            return self.home, self.score_label or "vs", self.away
+        if self.home_score is not None and self.away_score is not None:
+            return self.away, f"{self.away_score}-{self.home_score}", self.home
+        return self.away, "at", self.home
 
     def time_label(self, twelve_hour: bool = True) -> str:
         """Short label for the time column: kickoff time, or the state of the match."""
@@ -176,8 +185,11 @@ def normalise(
             )
         )
 
-    # Group competitions together, earliest kickoff within each competition first,
-    # competitions ordered by their earliest kickoff.
+    return sort_matches(matches)
+
+
+def sort_matches(matches: list[Match]) -> list[Match]:
+    """Group competitions together, ordered by each competition's earliest kickoff."""
     first_kick: dict[str, datetime] = {}
     for m in matches:
         first_kick[m.competition] = min(first_kick.get(m.competition, m.kickoff), m.kickoff)

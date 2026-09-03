@@ -10,13 +10,18 @@ MAX_CAPTION = 2200  # Instagram limit
 
 
 def build_caption(
-    matches: Sequence[Match], day: date, tz_label: str, hashtags: str = "", twelve_hour: bool = True
+    matches: Sequence[Match],
+    day: date,
+    tz_label: str,
+    hashtags: str = "",
+    twelve_hour: bool = True,
+    title: str = "⚽ Today's matches",
 ) -> str:
-    title = day.strftime("%A, %d %B %Y").replace(" 0", " ")
-    lines = [f"⚽ Today's matches — {title}", f"🕒 All times {tz_label}", ""]
+    date_text = day.strftime("%A, %d %B %Y").replace(" 0", " ")
+    lines = [f"{title} — {date_text}", f"🕒 All times {tz_label}", ""]
 
     if not matches:
-        lines.append("No matches scheduled today. Rest day!")
+        lines.append("Nothing scheduled today. Rest day!")
     else:
         # Show the competition-level "where to watch" only when some match lacks its own channel.
         fully_covered = {
@@ -32,8 +37,8 @@ def build_caption(
                 if m.tv and m.competition not in fully_covered:
                     lines.append(f"📺 {m.tv}")
                 current = m.competition
-            middle = m.score_label or "vs"
-            row = f"{m.time_label(twelve_hour)}  {m.home} {middle} {m.away}"
+            left, middle, right = m.display_pair()
+            row = f"{m.time_label(twelve_hour)}  {left} {middle} {right}"
             if m.channel:
                 row += f" · {m.channel}"
             lines.append(row)

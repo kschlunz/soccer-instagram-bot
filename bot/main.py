@@ -11,7 +11,8 @@ from pathlib import Path
 from .caption import build_caption
 from .config import Config
 from .espn import enrich
-from .fixtures import fetch_matches, normalise
+from .espn_fixtures import WOMENS_LEAGUES, build_matches
+from .fixtures import BROADCASTERS_FILE, fetch_matches, load_broadcasters, normalise
 from .hosting import publish_images, wait_until_public
 from .instagram import InstagramClient
 from .render import render_all
@@ -38,13 +39,17 @@ def run(argv: list[str] | None = None) -> int:
     day = date.fromisoformat(args.date) if args.date else datetime.now(tz).date()
     tz_label = cfg.tz_label(day)
 
+    broadcasters = load_broadcasters(BROADCASTERS_FILE.with_name(cfg.settings["broadcasters_file"]))
     if args.sample:
         payload = json.loads(Path(args.sample).read_text())
-        matches = normalise(payload, day, tz, cfg.competitions)
+        matches = normalise(payload, day, tz, cfg.competitions, broadcasters)
+    elif cfg.profile == "womens":
+        leagues = [l for l in WOMENS_LEAGUES if not cfg.competitions or l.code in cfg.competitions]
+        matches = build_matches(leagues, day, tz, broadcasters)
     else:
-        matches = fetch_matches(cfg.football_token, day, tz, cfg.competitions)
-    log.info("%d matches on %s (%s)", len(matches), day, cfg.timezone)
-    if matches and cfg.espn_enrich and not args.sample:
+        matches = fetch_matches(cfg.football_token, day, tz, cfg.competitions, broadcasters=broadcasters)
+    log.info("[%s] %d matches on %s (%s)", cfg.profile, len(matches), day, cfg.timezone)
+    if matches and cfg.espn_enrich and cfg.profile == "soccer" and not args.sample:
         matches = enrich(matches)
 
     if not matches and not cfg.post_when_empty:
@@ -52,8 +57,10 @@ def run(argv: list[str] | None = None) -> int:
         return 0
 
     out_dir = Path(args.out)
-    paths = render_all(matches, day, tz_label, out_dir, handle=args.handle, twelve_hour=cfg.twelve_hour)
-    caption = build_caption(matches, day, tz_label, cfg.hashtags, twelve_hour=cfg.twelve_hour)
+    paths = render_all(matches, day, tz_label, out_dir, handle=args.handle, twelve_hour=cfg.twelve_hour,
+                       title=cfg.settings["title"])
+    caption = build_caption(matches, day, tz_label, cfg.hashtags, twelve_hour=cfg.twelve_hour,
+                            title=cfg.settings["caption_title"])
     (out_dir / f"{day.isoformat()}-caption.txt").write_text(caption, encoding="utf-8")
     log.info("Rendered %d image(s) to %s", len(paths), out_dir)
 
@@ -61,7 +68,7 @@ def run(argv: list[str] | None = None) -> int:
         log.info("Dry run: skipping upload and Instagram publish.\n\n%s", caption)
         return 0
 
-    urls = publish_images(paths, cfg.images_branch, keep_days=cfg.keep_days)
+    urls = publish_images(paths, cfg.images_branch, keep_days=cfg.keep_days, subdir=cfg.settings["images_subdir"])
     log.info("Hosted images:\n  %s", "\n  ".join(urls))
     wait_until_public(urls)
 

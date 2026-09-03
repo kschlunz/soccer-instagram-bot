@@ -14,6 +14,14 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - account: soccer
+            secret_name: IG_ACCESS_TOKEN
+          - account: womens
+            secret_name: IG_ACCESS_TOKEN_WOMENS
     steps:
       - uses: actions/checkout@v4
 
@@ -29,28 +37,32 @@ jobs:
         id: cfg
         env:
           HAS_PAT: ${{ secrets.SECRETS_PAT != '' }}
-        run: echo "has_pat=$HAS_PAT" >> "$GITHUB_OUTPUT"
+          HAS_TOKEN: ${{ secrets[matrix.secret_name] != '' }}
+        run: |
+          echo "has_pat=$HAS_PAT" >> "$GITHUB_OUTPUT"
+          echo "has_token=$HAS_TOKEN" >> "$GITHUB_OUTPUT"
 
       - name: Refresh token with Instagram
-        if: steps.cfg.outputs.has_pat == 'true'
+        if: steps.cfg.outputs.has_pat == 'true' && steps.cfg.outputs.has_token == 'true'
         env:
-          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_ACCESS_TOKEN: ${{ secrets[matrix.secret_name] }}
           IG_API_BASE: ${{ vars.IG_API_BASE }}
         run: python -m bot.refresh_token --out "$RUNNER_TEMP/new_token"
 
-      - name: Store the refreshed token as the IG_ACCESS_TOKEN secret
-        if: steps.cfg.outputs.has_pat == 'true'
+      - name: Store the refreshed token back into the secret
+        if: steps.cfg.outputs.has_pat == 'true' && steps.cfg.outputs.has_token == 'true'
         env:
           GH_TOKEN: ${{ secrets.SECRETS_PAT }}
+          SECRET_NAME: ${{ matrix.secret_name }}
         run: |
           NEW_TOKEN="$(cat "$RUNNER_TEMP/new_token")"
           echo "::add-mask::$NEW_TOKEN"
-          gh secret set IG_ACCESS_TOKEN --repo "$GITHUB_REPOSITORY" --body "$NEW_TOKEN"
+          gh secret set "$SECRET_NAME" --repo "$GITHUB_REPOSITORY" --body "$NEW_TOKEN"
           rm -f "$RUNNER_TEMP/new_token"
-          echo "IG_ACCESS_TOKEN secret updated."
+          echo "$SECRET_NAME secret updated."
 
       - name: Open a reminder issue instead
-        if: steps.cfg.outputs.has_pat != 'true'
+        if: steps.cfg.outputs.has_pat != 'true' && steps.cfg.outputs.has_token == 'true' && matrix.account == 'soccer'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

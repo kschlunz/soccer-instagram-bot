@@ -20,7 +20,7 @@ from .fixtures import Match
 
 log = logging.getLogger("soccer-bot.espn")
 
-SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer/{league}/scoreboard"
+SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/scoreboard"
 
 # football-data.org competition code -> ESPN league slug
 ESPN_LEAGUES = {
@@ -57,28 +57,37 @@ NETWORK_NAMES = {
 KICKOFF_TOLERANCE = timedelta(minutes=10)
 
 
+def fetch_events(
+    sport: str,
+    league: str,
+    day: date,
+    session: requests.Session | None = None,
+    params: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    """Raw ESPN events for one league across the UTC day before/after `day`. Raises on failure."""
+    http = session or requests.Session()
+    span = f"{(day - timedelta(days=1)):%Y%m%d}-{(day + timedelta(days=1)):%Y%m%d}"
+    query = {"dates": span, "limit": 300, **(params or {})}
+    response = http.get(SCOREBOARD_URL.format(sport=sport, league=league), params=query, timeout=20)
+    response.raise_for_status()
+    events = response.json().get("events") or []
+    log.info("ESPN %s/%s: %d events", sport, league, len(events))
+    return events
+
+
 def fetch_broadcasts(
     codes: Iterable[str], day: date, session: requests.Session | None = None
 ) -> list[dict[str, Any]]:
-    """Return ESPN events for the given competitions around `day` (UTC day before/after too)."""
-    http = session or requests.Session()
+    """Return ESPN soccer events for the given football-data.org competitions around `day`."""
     events: list[dict[str, Any]] = []
-    span = f"{(day - timedelta(days=1)):%Y%m%d}-{(day + timedelta(days=1)):%Y%m%d}"
     for code in sorted(set(codes)):
         league = ESPN_LEAGUES.get(code)
         if not league:
             continue
         try:
-            response = http.get(
-                SCOREBOARD_URL.format(league=league), params={"dates": span, "limit": 200}, timeout=20
-            )
-            response.raise_for_status()
-            found = response.json().get("events") or []
+            events.extend(fetch_events("soccer", league, day, session))
         except (requests.RequestException, ValueError) as err:
             log.warning("ESPN lookup failed for %s (%s): %s", code, league, err)
-            continue
-        log.info("ESPN %s: %d events", league, len(found))
-        events.extend(found)
     return events
 
 
@@ -111,6 +120,11 @@ def apply_broadcasts(matches: list[Match], events: list[dict[str, Any]]) -> list
 
 
 # -- helpers ---------------------------------------------------------------
+
+def channels_for(comp: dict[str, Any]) -> str | None:
+    """Public alias: national English-language US broadcaster(s) listed for a competition."""
+    return _channels(comp)
+
 
 def _parse_event(event: dict[str, Any]) -> dict[str, Any] | None:
     try:

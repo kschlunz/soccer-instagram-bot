@@ -1,0 +1,18 @@
+{
+  "_comment": "Fallback US broadcaster per women's competition, keyed by the league codes in bot/espn_fixtures.py. ESPN usually supplies the exact channel per game, so these only show when it does not. Verify each season.",
+  "NWSL": "CBS, Paramount+, Prime Video, ESPN & ION",
+  "WSL": "ESPN+",
+  "UWCL": "Disney+",
+  "WWC": "FOX & FS1 (Spanish: Telemundo)",
+  "WEURO": "FOX & FS1",
+  "WINTL": "TNT, truTV & HBO Max (USWNT)",
+  "LIGAF": "DAZN",
+  "FBL": "DAZN",
+  "WNBA": "ESPN, ABC, Prime Video, NBC, Peacock & ION",
+  "NCAAWBB": "ESPN networks, FOX & CBS",
+  "NCAAWVB": "ESPN networks & Big Ten Network",
+  "NCAAWSB": "ESPN networks",
+  "NCAAWH": "ESPN+",
+  "NCAAWLAX": "ESPN networks",
+  "PWHL": "YouTube (PWHL channel)"
+}

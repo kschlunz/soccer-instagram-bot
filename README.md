@@ -1,5 +1,12 @@
 # Soccer Instagram Bot
 
+Two Instagram accounts run from this repo:
+
+- **Soccer** (`PROFILE=soccer`, the default): men's club and international soccer from
+  football-data.org, with US channels from ESPN.
+- **Women's sports** (`PROFILE=womens`): NWSL, WSL, Women's Champions League, WNBA, and
+  nationally televised women's college games, all from ESPN's scoreboard feed.
+
 Posts a picture of every soccer match happening today, with kickoff times in US
 Eastern time and where to watch each competition in the USA, to an Instagram account
 once a day. It runs for free on GitHub Actions.
@@ -20,13 +27,16 @@ soccer-instagram-bot/
   bot/main.py        CLI entry point
   bot/fixtures.py    football-data.org client, timezone handling, sorting
   bot/espn.py        per-match US channel from ESPN's scoreboard feed (best effort)
+  bot/espn_fixtures.py   women's sports schedule built from ESPN scoreboards
+  bot/data/us_broadcasters_womens.json   fallback channels for the women's profile
   bot/render.py      Pillow image renderer + pagination
   bot/caption.py     caption text
   bot/hosting.py     pushes images to the images branch with git plumbing
   bot/instagram.py   Graph API: containers, carousel, publish
   bot/data/us_broadcasters.json   where to watch each competition in the USA
   bot/refresh_token.py   renews the Instagram token
-  .github/workflows/daily-post.yml      daily post
+  .github/workflows/daily-post.yml         daily soccer post (11:00 UTC)
+  .github/workflows/daily-post-womens.yml  daily women's sports post (11:30 UTC)
   .github/workflows/refresh-token.yml   token refresh / reminder
 ```
 
@@ -134,10 +144,46 @@ Current values, checked for the 2026-27 season:
 Rights move between networks most summers; edit the JSON file when they do. Libertadores
 rights are only confirmed through the 2026 edition.
 
-### 5. Token refresh (recommended)
+### 5. Women's sports account
+
+The women's profile needs its own Instagram account and token. Repeat the Instagram steps
+above for that account (the same Meta app can hold both: add the second account as a tester
+and generate its token), then add these repository secrets:
+
+| Secret | Value |
+| --- | --- |
+| `IG_USER_ID_WOMENS` | the women's account's Instagram user id |
+| `IG_ACCESS_TOKEN_WOMENS` | its long-lived token |
+
+Optional variables: `IG_HANDLE_WOMENS`, `HASHTAGS_WOMENS`, and `COMPETITIONS_WOMENS`
+(comma-separated codes from the table below; empty means all).
+
+| Code | League | Notes |
+| --- | --- | --- |
+| `NWSL` | NWSL | |
+| `WSL` | Women's Super League | |
+| `UWCL` | Women's Champions League | |
+| `WWC` / `WEURO` | Women's World Cup / Euro | tournament years only |
+| `WINTL` | Women's internationals | USWNT friendlies |
+| `LIGAF` / `FBL` | Liga F / Frauen-Bundesliga | ESPN coverage is patchy |
+| `WNBA` | WNBA | |
+| `NCAAWBB` | Women's college basketball | nationally televised games only |
+| `NCAAWVB` | Women's college volleyball | nationally televised games only |
+| `NCAAWSB` | College softball | nationally televised games only |
+| `NCAAWH` / `NCAAWLAX` | Women's college hockey / lacrosse | nationally televised games only |
+| `PWHL` | PWHL | |
+
+football-data.org has no women's competitions, so this profile depends entirely on ESPN's
+undocumented feed. If ESPN changes something the run fails loudly (red X in Actions) rather
+than posting bad data. US sports read "Away at Home"; soccer reads "Home vs Away".
+
+The women's post runs at 11:30 UTC, half an hour after the soccer post, so the two do not
+push to the images branch at the same moment (the push is retried if they ever do).
+
+### 6. Token refresh (recommended)
 
 `.github/workflows/refresh-token.yml` runs on October 31, two days before the current token
-expires (edit the cron date if you regenerate the token). If a `SECRETS_PAT` secret exists
+expires (edit the cron date if you regenerate the token), once per account. If a `SECRETS_PAT` secret exists
 it calls Instagram's refresh endpoint, which extends the token another 60 days, and writes
 the new token back into the `IG_ACCESS_TOKEN` secret. Without `SECRETS_PAT` it opens a
 reminder issue instead, since the default Actions token is not allowed to edit secrets. You
@@ -155,7 +201,7 @@ Only tokens from "Instagram API with Instagram Login" (`IG_API_BASE` on
 `graph.instagram.com`) can be refreshed this way. Facebook-login tokens need a manual
 exchange with the app secret.
 
-### 6. Schedule
+### 7. Schedule
 
 `.github/workflows/daily-post.yml` runs at 11:00 UTC daily. Change the cron line to move
 it. You can also run it by hand from the Actions tab: **Daily matchday post > Run

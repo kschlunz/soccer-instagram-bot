@@ -118,12 +118,20 @@ def _ellipsize(draw: ImageDraw.ImageDraw, text: str, font, max_width: int) -> st
     return text.rstrip() + "…"
 
 
-def _draw_header(draw: ImageDraw.ImageDraw, day: date, page: int, total: int) -> None:
-    title_font = _font(True, 64)
+def _draw_header(
+    draw: ImageDraw.ImageDraw, day: date, page: int, total: int, title: str = "TODAY'S MATCHES"
+) -> None:
     sub_font = _font(False, 34)
     draw.rectangle([0, 0, WIDTH, HEADER_HEIGHT], fill=BG)
     draw.rectangle([MARGIN, 84, MARGIN + 14, 84 + 130], fill=ACCENT)
-    draw.text((MARGIN + 40, 78), "TODAY'S MATCHES", font=title_font, fill=TEXT)
+    # Shrink long titles until they clear the page indicator on the right.
+    max_w = WIDTH - (MARGIN + 40) - MARGIN - (110 if total > 1 else 0)
+    size = 64
+    title_font = _font(True, size)
+    while size > 36 and draw.textlength(title, font=title_font) > max_w:
+        size -= 2
+        title_font = _font(True, size)
+    draw.text((MARGIN + 40, 78 + (64 - size) // 2), title, font=title_font, fill=TEXT)
     date_text = day.strftime("%A, %-d %B %Y") if os.name != "nt" else day.strftime("%A, %d %B %Y")
     draw.text((MARGIN + 40, 160), date_text, font=sub_font, fill=MUTED)
     if total > 1:
@@ -151,10 +159,11 @@ def render_page(
     tz_label: str,
     handle: str | None,
     twelve_hour: bool = True,
+    title: str = "TODAY'S MATCHES",
 ) -> Image.Image:
     img = Image.new("RGB", (WIDTH, HEIGHT), BG)
     draw = ImageDraw.Draw(img)
-    _draw_header(draw, day, page, total)
+    _draw_header(draw, day, page, total, title)
 
     section_font = _font(True, 30)
     tv_font = _font(False, 22)
@@ -197,17 +206,17 @@ def render_page(
             draw.rounded_rectangle([MARGIN, pill_top, MARGIN + time_col_w, pill_bottom], radius=10, fill=TIME_BG)
             tw = draw.textlength(label, font=time_font)
             draw.text((MARGIN + (time_col_w - tw) / 2, pill_top + 6), label, font=time_font, fill=ACCENT if label != "TBD" else MUTED)
-            # Teams
-            vs = m.score_label or "vs"
+            # Teams: "Home vs Away" for soccer, "Away at Home" for US sports
+            left_name, vs, right_name = m.display_pair()
             vs_w = draw.textlength(f"  {vs}  ", font=vs_font)
             side_w = (text_w - vs_w) / 2
-            home = _ellipsize(draw, m.home, team_font, int(side_w))
-            away = _ellipsize(draw, m.away, team_font, int(side_w))
-            hw = draw.textlength(home, font=team_font)
+            left = _ellipsize(draw, left_name, team_font, int(side_w))
+            right = _ellipsize(draw, right_name, team_font, int(side_w))
+            lw = draw.textlength(left, font=team_font)
             text_y = y + 14
-            draw.text((text_x + side_w - hw, text_y), home, font=team_font, fill=TEXT)
+            draw.text((text_x + side_w - lw, text_y), left, font=team_font, fill=TEXT)
             draw.text((text_x + side_w + (vs_w - draw.textlength(vs, font=vs_font)) / 2, text_y + 6), vs, font=vs_font, fill=MUTED)
-            draw.text((text_x + side_w + vs_w, text_y), away, font=team_font, fill=TEXT)
+            draw.text((text_x + side_w + vs_w, text_y), right, font=team_font, fill=TEXT)
             if m.channel:
                 ch = _ellipsize(draw, m.channel, channel_font, text_w)
                 cw = draw.textlength(ch, font=channel_font)
@@ -222,12 +231,12 @@ def render_page(
     return img
 
 
-def render_empty(day: date, tz_label: str, handle: str | None) -> Image.Image:
+def render_empty(day: date, tz_label: str, handle: str | None, title: str = "TODAY'S MATCHES") -> Image.Image:
     img = Image.new("RGB", (WIDTH, HEIGHT), BG)
     draw = ImageDraw.Draw(img)
-    _draw_header(draw, day, 1, 1)
+    _draw_header(draw, day, 1, 1, title)
     font = _font(True, 44)
-    msg = "No matches scheduled today"
+    msg = "Nothing scheduled today"
     w = draw.textlength(msg, font=font)
     draw.text(((WIDTH - w) / 2, HEIGHT / 2 - 40), msg, font=font, fill=TEXT)
     sub = _font(False, 30)
@@ -245,6 +254,7 @@ def render_all(
     out_dir: Path,
     handle: str | None = None,
     twelve_hour: bool = True,
+    title: str = "TODAY'S MATCHES",
 ) -> list[Path]:
     """Render every page for `day` into `out_dir` and return the JPEG paths in order."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -252,11 +262,11 @@ def render_all(
     pages = paginate(matches) if matches else []
     images = (
         [
-            render_page(lines, day, i + 1, len(pages), tz_label, handle, twelve_hour)
+            render_page(lines, day, i + 1, len(pages), tz_label, handle, twelve_hour, title)
             for i, lines in enumerate(pages)
         ]
         if pages
-        else [render_empty(day, tz_label, handle)]
+        else [render_empty(day, tz_label, handle, title)]
     )
     paths: list[Path] = []
     for i, img in enumerate(images, start=1):
