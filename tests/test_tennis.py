@@ -72,3 +72,16 @@ def test_numbered_rounds():
     assert tennis._importance("Round of 16") == 1
     assert tennis._importance("Quarterfinals") == 2
     assert tennis._importance("Something else") is None
+
+
+def test_mens_draw_is_excluded():
+    ev = {"shortName": "US Open", "groupings": [
+        {"grouping": {"slug": "mens-singles"}, "competitions": [{
+            "id": "m", "date": "2026-09-03T15:00Z", "round": {"displayName": "Semifinals"},
+            "geoBroadcasts": [{"market": {"type": "National"}, "media": {"shortName": "ESPN"}, "lang": "en", "region": "us"}],
+            "competitors": [{"athlete": {"shortName": "A. Man"}}, {"athlete": {"shortName": "B. Man"}}]}]},
+        {"grouping": {"slug": "womens-singles"}, "competitions": [{
+            "id": "w", "date": "2026-09-03T15:00Z", "round": {"displayName": "Semifinals"},
+            "competitors": [{"athlete": {"shortName": "A. Woman"}}, {"athlete": {"shortName": "B. Woman"}}]}]}]}
+    ms = tennis.events_to_matches([ev], date(2026, 9, 3), NY, BC)
+    assert [m.home for m in ms] == ["A. Woman"]

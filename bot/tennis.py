@@ -49,18 +49,8 @@ def events_to_matches(
     seen: set[str] = set()
     events = list(events)
     if events:
-        first = events[0]
-        comps = list(_competitions(first))
-        draws = {draw: sum(1 for _, d in comps if d == draw) for _, draw in comps}
-        log.info("ESPN tennis: %d tournament(s); first=%r; draws=%s",
-                 len(events), first.get("shortName") or first.get("name"), draws)
-        if comps:
-            c = comps[0][0]
-            comp0 = (c.get("competitors") or [{}])[0]
-            log.info("ESPN tennis sample: round=%r status=%r timeValid=%r date=%r competitor keys=%s athlete=%s",
-                     c.get("round"), (c.get("status") or {}).get("type", {}).get("name"), c.get("timeValid"),
-                     c.get("date"), sorted(comp0.keys())[:12],
-                     {k: v for k, v in (comp0.get("athlete") or {}).items() if k in ("displayName", "shortName")})
+        log.info("ESPN tennis: %d tournament(s): %s", len(events),
+                 ", ".join((e.get("shortName") or e.get("name") or "?") for e in events))
     for event in events:
         tournament = (event.get("shortName") or event.get("name") or "WTA").strip()
         is_slam = any(s in tournament.lower() for s in GRAND_SLAMS)
@@ -69,16 +59,8 @@ def events_to_matches(
         competition_name = f"{tournament} · Women's Singles"
 
         kept_early = 0
-        todays = [c for c, d in _competitions(event)
-                  if _is_singles(d, c) and _local_date(c, tz) == day]
-        log.info("ESPN tennis %s: %d women's singles match(es) dated %s", tournament, len(todays), day)
-        for c in todays[:4]:
-            log.info("  sample: round=%r date=%r timeValid=%r broadcast=%r broadcasts=%r geo=%r",
-                     (c.get("round") or {}).get("displayName") if isinstance(c.get("round"), dict) else c.get("round"),
-                     c.get("date"), c.get("timeValid"), c.get("broadcast"),
-                     [b.get("names") for b in c.get("broadcasts") or []],
-                     [((g.get("media") or {}).get("shortName"), g.get("lang"), (g.get("market") or {}).get("type"))
-                      for g in c.get("geoBroadcasts") or []])
+        todays = sum(1 for c, d in _competitions(event) if _is_singles(d, c) and _local_date(c, tz) == day)
+        log.info("ESPN tennis %s: %d women's singles match(es) dated %s", tournament, todays, day)
         for comp, draw in _competitions(event):
             key = str(comp.get("id") or comp.get("uid") or id(comp))
             if key in seen:
@@ -119,7 +101,10 @@ def _competitions(event: dict[str, Any]):
 
 
 def _is_singles(draw: str, comp: dict[str, Any] | None = None) -> bool:
+    """Women's singles only. ESPN's WTA scoreboard also carries the men's draws at Slams."""
     if "doubles" in draw or "mixed" in draw:
+        return False
+    if draw.startswith(("mens", "men's", "men-", "atp")) or " men" in draw:
         return False
     if any(s in draw for s in SINGLES_SLUGS):
         return True
