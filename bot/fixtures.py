@@ -1,0 +1,123 @@
+"""Fetch and normalise fixtures from football-data.org (v4)."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Iterable
+from zoneinfo import ZoneInfo
+
+import requests
+
+API_URL = "https://api.football-data.org/v4/matches"
+
+# Statuses where the kickoff time is meaningful.
+TIMED_STATUSES = {"TIMED", "IN_PLAY", "PAUSED", "FINISHED"}
+
+
+@dataclass(frozen=True)
+class Match:
+    competition: str
+    competition_code: str
+    home: str
+    away: str
+    kickoff: datetime  # timezone-aware, already in the display timezone
+    status: str
+    home_score: int | None = None
+    away_score: int | None = None
+    stage: str | None = None
+
+    @property
+    def time_label(self) -> str:
+        """Short label for the time column: kickoff time, or the state of the match."""
+        if self.status == "TIMED":
+            return self.kickoff.strftime("%H:%M")
+        if self.status in {"IN_PLAY", "PAUSED"}:
+            return "LIVE"
+        if self.status == "FINISHED":
+            return "FT"
+        if self.status == "POSTPONED":
+            return "PPD"
+        if self.status == "CANCELLED":
+            return "CANC"
+        if self.status == "SUSPENDED":
+            return "SUSP"
+        return "TBD"  # SCHEDULED: date known, kickoff time not yet confirmed
+
+    @property
+    def score_label(self) -> str | None:
+        if self.home_score is None or self.away_score is None:
+            return None
+        return f"{self.home_score}-{self.away_score}"
+
+
+def fetch_matches(
+    token: str,
+    day: date,
+    tz: ZoneInfo,
+    competitions: Iterable[str] | None = None,
+    session: requests.Session | None = None,
+) -> list[Match]:
+    """Return all matches that kick off on `day` in timezone `tz`.
+
+    The API filters by UTC date, so we ask for a three-day window and filter
+    locally; that keeps late-evening kickoffs on the right local day.
+    """
+    params: dict[str, str] = {
+        "dateFrom": (day - timedelta(days=1)).isoformat(),
+        "dateTo": (day + timedelta(days=1)).isoformat(),
+    }
+    comps = [c.upper() for c in (competitions or [])]
+    if comps:
+        params["competitions"] = ",".join(comps)
+
+    http = session or requests.Session()
+    response = http.get(API_URL, headers={"X-Auth-Token": token}, params=params, timeout=30)
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"football-data.org returned {response.status_code}: {response.text[:300]}"
+        )
+    return normalise(response.json(), day, tz, comps)
+
+
+def normalise(payload: dict[str, Any], day: date, tz: ZoneInfo, competitions: list[str]) -> list[Match]:
+    matches: list[Match] = []
+    for raw in payload.get("matches", []):
+        comp = raw.get("competition") or {}
+        code = (comp.get("code") or "").upper()
+        if competitions and code not in competitions:
+            continue
+
+        utc = datetime.fromisoformat(raw["utcDate"].replace("Z", "+00:00"))
+        if utc.tzinfo is None:
+            utc = utc.replace(tzinfo=timezone.utc)
+        local = utc.astimezone(tz)
+        if local.date() != day:
+            continue
+
+        score = (raw.get("score") or {}).get("fullTime") or {}
+        matches.append(
+            Match(
+                competition=comp.get("name") or code or "Unknown competition",
+                competition_code=code,
+                home=_team_name(raw.get("homeTeam")),
+                away=_team_name(raw.get("awayTeam")),
+                kickoff=local,
+                status=raw.get("status") or "SCHEDULED",
+                home_score=score.get("home"),
+                away_score=score.get("away"),
+                stage=raw.get("stage"),
+            )
+        )
+
+    # Group competitions together, earliest kickoff within each competition first,
+    # competitions ordered by their earliest kickoff.
+    first_kick: dict[str, datetime] = {}
+    for m in matches:
+        first_kick[m.competition] = min(first_kick.get(m.competition, m.kickoff), m.kickoff)
+    matches.sort(key=lambda m: (first_kick[m.competition], m.competition, m.kickoff, m.home))
+    return matches
+
+
+def _team_name(team: dict[str, Any] | None) -> str:
+    team = team or {}
+    return team.get("shortName") or team.get("name") or team.get("tla") or "TBD"
