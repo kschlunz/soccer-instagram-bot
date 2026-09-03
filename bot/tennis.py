@@ -41,6 +41,14 @@ def events_to_matches(
     code: str = "WTA",
 ) -> list[Match]:
     out: list[Match] = []
+    seen: set[str] = set()
+    events = list(events)
+    if events:
+        first = events[0]
+        comps = list(_competitions(first))
+        log.info("ESPN tennis: %d tournament(s); first=%r keys=%s; %d draw entries; sample match keys=%s",
+                 len(events), first.get("shortName") or first.get("name"), sorted(first.keys())[:12],
+                 len(comps), sorted(comps[0][0].keys())[:14] if comps else None)
     for event in events:
         tournament = (event.get("shortName") or event.get("name") or "WTA").strip()
         is_slam = any(s in tournament.lower() for s in GRAND_SLAMS)
@@ -49,6 +57,10 @@ def events_to_matches(
         competition_name = f"{tournament} · Women's Singles"
 
         for comp, draw in _competitions(event):
+            key = str(comp.get("id") or comp.get("uid") or id(comp))
+            if key in seen:
+                continue
+            seen.add(key)
             if not _is_singles(draw):
                 continue
             try:

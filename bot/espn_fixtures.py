@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo
 
@@ -79,7 +79,14 @@ def build_matches(
     matches: list[Match] = []
     for league in leagues:
         try:
-            events = fetch_events(league.sport, league.slug, day, http, league.params)
+            if league.sport == "tennis":
+                # The tennis scoreboard is tournament-shaped and ignores date ranges: ask for
+                # single days (local day and the next UTC day) and let the parser de-duplicate.
+                events = []
+                for d in (day, day + timedelta(days=1)):
+                    events += fetch_events(league.sport, league.slug, d, http, {**league.params, "dates": f"{d:%Y%m%d}"})
+            else:
+                events = fetch_events(league.sport, league.slug, day, http, league.params)
         except (requests.RequestException, ValueError) as err:
             log.warning("Skipping %s (%s/%s): %s", league.name, league.sport, league.slug, err)
             continue
