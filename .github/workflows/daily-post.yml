@@ -50,14 +50,16 @@ jobs:
           TZ_LABEL: ${{ vars.TZ_LABEL }}
           COMPETITIONS: ${{ vars.COMPETITIONS }}
           POST_WHEN_EMPTY: ${{ vars.POST_WHEN_EMPTY || 'false' }}
-          HASHTAGS: ${{ vars.HASHTAGS || '#soccer #football #matchday #fixtures #futbol' }}
+          HASHTAGS: "${{ vars.HASHTAGS || '#soccer #football #matchday #fixtures #futbol' }}"
           IG_HANDLE: ${{ vars.IG_HANDLE }}
           GIT_AUTHOR_NAME: github-actions[bot]
           GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          INPUT_DATE: ${{ inputs.date }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
         run: |
           ARGS=""
-          if [ -n "${{ inputs.date }}" ]; then ARGS="$ARGS --date ${{ inputs.date }}"; fi
-          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ -n "$INPUT_DATE" ]; then ARGS="$ARGS --date $INPUT_DATE"; fi
+          if [ "$INPUT_DRY_RUN" = "true" ]; then ARGS="$ARGS --dry-run"; fi
           if [ -n "$IG_HANDLE" ]; then ARGS="$ARGS --handle $IG_HANDLE"; fi
           python -m bot.main $ARGS
 
