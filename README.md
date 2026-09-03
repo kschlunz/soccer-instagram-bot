@@ -24,7 +24,9 @@ soccer-instagram-bot/
   bot/hosting.py     pushes images to the images branch with git plumbing
   bot/instagram.py   Graph API: containers, carousel, publish
   bot/data/us_broadcasters.json   where to watch each competition in the USA
-  .github/workflows/daily-post.yml
+  bot/refresh_token.py   renews the Instagram token
+  .github/workflows/daily-post.yml      daily post
+  .github/workflows/refresh-token.yml   weekly token refresh
 ```
 
 ## Setup
@@ -63,8 +65,8 @@ Instagram only lets bots post to **Business or Creator** accounts.
    curl "https://graph.instagram.com/v21.0/me?fields=id,username&access_token=LONG_TOKEN"
    ```
 
-Long-lived tokens expire after 60 days, so refresh it before then (a `GET
-/refresh_access_token?grant_type=ig_refresh_token` call) and update the secret.
+Long-lived tokens expire after 60 days. See "Token refresh" below to have the bot renew
+it automatically.
 
 ### 3. GitHub configuration
 
@@ -124,7 +126,26 @@ Current values, checked for the 2026-27 season:
 Rights move between networks most summers; edit the JSON file when they do. Libertadores
 rights are only confirmed through the 2026 edition.
 
-### 5. Schedule
+### 5. Token refresh (recommended)
+
+`.github/workflows/refresh-token.yml` runs every Monday. If a `SECRETS_PAT` secret exists
+it calls Instagram's refresh endpoint, which extends the token another 60 days, and writes
+the new token back into the `IG_ACCESS_TOKEN` secret. Without `SECRETS_PAT` it opens a
+reminder issue instead, since the default Actions token is not allowed to edit secrets.
+
+To enable automatic refresh, create a fine-grained personal access token:
+
+1. GitHub > Settings > Developer settings > Personal access tokens > Fine-grained tokens >
+   Generate new token.
+2. Repository access: only this repository. Permissions: **Secrets: Read and write**.
+   Expiration: as long as GitHub allows (you can set it to a year and renew then).
+3. Save it as a repository secret named `SECRETS_PAT`.
+
+Only tokens from "Instagram API with Instagram Login" (`IG_API_BASE` on
+`graph.instagram.com`) can be refreshed this way. Facebook-login tokens need a manual
+exchange with the app secret.
+
+### 6. Schedule
 
 `.github/workflows/daily-post.yml` runs at 11:00 UTC daily. Change the cron line to move
 it. You can also run it by hand from the Actions tab: **Daily matchday post > Run
