@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+from . import tennis
 from .espn import channels_for, fetch_events
 from .fixtures import Match, sort_matches
 
@@ -52,6 +53,7 @@ WOMENS_LEAGUES: list[League] = [
     League("WINTL", "soccer", "fifa.friendly.w", "Women's Internationals"),
     League("LIGAF", "soccer", "esp.w.1", "Liga F"),
     League("WNBA", "basketball", "wnba", "WNBA"),
+    League("WTA", "tennis", "wta", "WTA"),   # Grand Slams from the round of 16, other events from the quarterfinals
     League("NCAAWBB", "basketball", "womens-college-basketball", "Women's College Basketball",
            national_tv_only=True, params={"groups": "50"}),
     League("NCAAWVB", "volleyball", "womens-college-volleyball", "Women's College Volleyball",
@@ -81,7 +83,10 @@ def build_matches(
         except (requests.RequestException, ValueError) as err:
             log.warning("Skipping %s (%s/%s): %s", league.name, league.sport, league.slug, err)
             continue
-        matches.extend(events_to_matches(events, league, day, tz, broadcasters.get(league.code)))
+        if league.sport == "tennis":
+            matches.extend(tennis.events_to_matches(events, day, tz, broadcasters, league.code))
+        else:
+            matches.extend(events_to_matches(events, league, day, tz, broadcasters.get(league.code)))
     return sort_matches(matches)
 
 

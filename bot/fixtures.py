@@ -48,7 +48,7 @@ class Match:
 
     def display_pair(self) -> tuple[str, str, str]:
         """(left, middle, right) as it should read: 'Home vs Away' for soccer, 'Away at Home' for US sports."""
-        if self.sport == "soccer":
+        if self.sport in ("soccer", "tennis"):
             return self.home, self.score_label or "vs", self.away
         if self.home_score is not None and self.away_score is not None:
             return self.away, f"{self.away_score}-{self.home_score}", self.home

@@ -1,5 +1,5 @@
 {
-  "_comment": "Fallback US broadcaster per women's competition, keyed by the league codes in bot/espn_fixtures.py. ESPN usually supplies the exact channel per game, so these only show when it does not. Verify each season.",
+  "_comment": "Fallback US broadcaster per women's competition, keyed by the league codes in bot/espn_fixtures.py. ESPN usually supplies the exact channel per game, so these only show when it does not. Verify each season. Tennis: 'WTA' is the default; 'WTA:<tournament>' overrides it for that event.",
   "NWSL": "CBS, Paramount+, Prime Video, ESPN & ION",
   "WSL": "ESPN+",
   "UWCL": "Disney+",
@@ -14,5 +14,11 @@
   "NCAAWSB": "ESPN networks",
   "NCAAWH": "ESPN+",
   "NCAAWLAX": "ESPN networks",
-  "PWHL": "YouTube (PWHL channel)"
+  "PWHL": "YouTube (PWHL channel)",
+  "WTA": "Tennis Channel",
+  "WTA:US Open": "ESPN & ESPN+ (final on ABC)",
+  "WTA:Wimbledon": "ESPN & ESPN+",
+  "WTA:Australian Open": "ESPN & ESPN+",
+  "WTA:French Open": "TNT, truTV & HBO Max",
+  "WTA:Roland Garros": "TNT, truTV & HBO Max"
 }

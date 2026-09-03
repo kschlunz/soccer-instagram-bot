@@ -1,0 +1,54 @@
+{
+  "events": [
+    {"id": "t1", "name": "US Open Tennis Championships", "shortName": "US Open", "date": "2026-08-31T15:00Z",
+     "groupings": [
+       {"grouping": {"slug": "womens-singles", "displayName": "Women's Singles"},
+        "competitions": [
+          {"id": "m1", "date": "2026-09-03T23:00Z", "timeValid": true,
+           "status": {"type": {"name": "STATUS_SCHEDULED", "state": "pre", "detail": "Not Before 7:00 PM"}},
+           "round": {"displayName": "Semifinals"},
+           "competitors": [
+             {"athlete": {"displayName": "Aryna Sabalenka", "shortName": "A. Sabalenka"}, "seed": "1"},
+             {"athlete": {"displayName": "Coco Gauff", "shortName": "C. Gauff"}, "seed": "3"}]},
+          {"id": "m2", "date": "2026-09-04T00:30Z", "timeValid": true,
+           "status": {"type": {"name": "STATUS_SCHEDULED", "state": "pre"}},
+           "round": {"displayName": "Semifinals"},
+           "competitors": [
+             {"athlete": {"displayName": "Iga Swiatek", "shortName": "I. Swiatek"}, "seed": "2"},
+             {"athlete": {"displayName": "Naomi Osaka", "shortName": "N. Osaka"}, "seed": ""}]},
+          {"id": "m3", "date": "2026-09-03T15:00Z", "timeValid": true,
+           "status": {"type": {"name": "STATUS_SCHEDULED", "state": "pre"}},
+           "round": {"displayName": "Round of 32"},
+           "competitors": [
+             {"athlete": {"displayName": "Player A", "shortName": "P. A"}},
+             {"athlete": {"displayName": "Player B", "shortName": "P. B"}}]}
+        ]},
+       {"grouping": {"slug": "womens-doubles", "displayName": "Women's Doubles"},
+        "competitions": [
+          {"id": "d1", "date": "2026-09-03T17:00Z", "timeValid": true,
+           "status": {"type": {"name": "STATUS_SCHEDULED", "state": "pre"}},
+           "round": {"displayName": "Final"},
+           "competitors": [
+             {"team": {"displayName": "Team X"}}, {"team": {"displayName": "Team Y"}}]}
+        ]}
+     ]},
+    {"id": "t2", "name": "Guadalajara Open", "shortName": "Guadalajara", "date": "2026-09-01T15:00Z",
+     "groupings": [
+       {"grouping": {"slug": "womens-singles", "displayName": "Women's Singles"},
+        "competitions": [
+          {"id": "g1", "date": "2026-09-03T20:00Z", "timeValid": true,
+           "status": {"type": {"name": "STATUS_SCHEDULED", "state": "pre"}},
+           "round": {"displayName": "Round of 16"},
+           "competitors": [
+             {"athlete": {"displayName": "Player C", "shortName": "P. C"}},
+             {"athlete": {"displayName": "Player D", "shortName": "P. D"}}]},
+          {"id": "g2", "date": "2026-09-03T22:00Z", "timeValid": true,
+           "status": {"type": {"name": "STATUS_SCHEDULED", "state": "pre"}},
+           "round": {"displayName": "Quarterfinals"},
+           "competitors": [
+             {"athlete": {"displayName": "Player E", "shortName": "P. E"}, "seed": "4"},
+             {"athlete": {"displayName": "Player F", "shortName": "P. F"}}]}
+        ]}
+     ]}
+  ]
+}

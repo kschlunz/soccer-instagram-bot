@@ -1,0 +1,179 @@
+"""WTA matches from ESPN's tennis scoreboard.
+
+ESPN's tennis feed differs from team sports: each *event* is a tournament, and the
+matches live under event["groupings"][i]["competitions"] (grouped by draw: women's
+singles, women's doubles...). Only singles are used. To keep a Grand Slam's first
+week from flooding the post, only the later rounds are shown (see MIN_ROUND).
+"""
+from __future__ import annotations
+
+import logging
+from datetime import date, datetime, timezone
+from typing import Any, Iterable
+from zoneinfo import ZoneInfo
+
+from .fixtures import Match
+
+log = logging.getLogger("soccer-bot.tennis")
+
+GRAND_SLAMS = ("us open", "wimbledon", "australian open", "french open", "roland garros")
+
+# Round names -> importance. Matches below MIN_ROUND (or with an unknown round) are skipped.
+ROUND_ORDER = {
+    "round of 128": 0, "first round": 0, "1st round": 0,
+    "round of 64": 0, "second round": 0, "2nd round": 0,
+    "round of 32": 0, "third round": 0, "3rd round": 0,
+    "round of 16": 1, "fourth round": 1, "4th round": 1,
+    "quarterfinal": 2, "quarterfinals": 2, "quarter-final": 2, "quarter-finals": 2,
+    "semifinal": 3, "semifinals": 3, "semi-final": 3, "semi-finals": 3,
+    "final": 4, "finals": 4, "championship": 4,
+}
+MIN_ROUND_SLAM = 1    # Grand Slams: round of 16 onward
+MIN_ROUND_OTHER = 2   # other WTA events: quarterfinals onward
+SINGLES_SLUGS = ("womens-singles", "women's singles", "womens singles", "singles")
+
+
+def events_to_matches(
+    events: Iterable[dict[str, Any]],
+    day: date,
+    tz: ZoneInfo,
+    broadcasters: dict[str, str],
+    code: str = "WTA",
+) -> list[Match]:
+    out: list[Match] = []
+    for event in events:
+        tournament = (event.get("shortName") or event.get("name") or "WTA").strip()
+        is_slam = any(s in tournament.lower() for s in GRAND_SLAMS)
+        min_round = MIN_ROUND_SLAM if is_slam else MIN_ROUND_OTHER
+        tv = broadcasters.get(f"{code}:{tournament}") or _slam_tv(tournament, broadcasters) or broadcasters.get(code)
+        competition_name = f"{tournament} · Women's Singles"
+
+        for comp, draw in _competitions(event):
+            if not _is_singles(draw):
+                continue
+            try:
+                m = _match(comp, competition_name, code, day, tz, tv, min_round)
+            except (KeyError, IndexError, AttributeError, ValueError, TypeError) as err:
+                log.warning("Skipping malformed tennis match in %s: %s", tournament, err)
+                continue
+            if m:
+                out.append(m)
+    return out
+
+
+def _competitions(event: dict[str, Any]):
+    """Yield (competition, draw name) for every match in the tournament."""
+    groupings = event.get("groupings")
+    if groupings:
+        for g in groupings:
+            info = g.get("grouping") or {}
+            draw = (info.get("slug") or info.get("displayName") or "").lower()
+            for comp in g.get("competitions") or []:
+                yield comp, draw
+    else:
+        for comp in event.get("competitions") or []:
+            draw = ((comp.get("type") or {}).get("text") or comp.get("description") or "singles").lower()
+            yield comp, draw
+
+
+def _is_singles(draw: str) -> bool:
+    return any(s in draw for s in SINGLES_SLUGS) and "doubles" not in draw and "mixed" not in draw
+
+
+def _match(comp, competition_name, code, day, tz, tv, min_round) -> Match | None:
+    raw_date = comp.get("date")
+    if not raw_date:
+        return None
+    utc = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
+    if utc.tzinfo is None:
+        utc = utc.replace(tzinfo=timezone.utc)
+    local = utc.astimezone(tz)
+    if local.date() != day:
+        return None
+
+    round_name = _round_name(comp)
+    importance = ROUND_ORDER.get(round_name.lower().strip()) if round_name else None
+    if importance is None or importance < min_round:
+        return None
+
+    players = [c for c in comp.get("competitors") or [] if c.get("athlete") or c.get("team")]
+    if len(players) < 2:
+        return None
+    a, b = players[0], players[1]
+    status = _status(comp)
+    finished = status == "FINISHED"
+    return Match(
+        competition=competition_name,
+        competition_code=code,
+        home=_player(a),
+        away=_player(b),
+        kickoff=local,
+        status=status,
+        home_score=_sets_won(a) if finished else None,
+        away_score=_sets_won(b) if finished else None,
+        stage=round_name,
+        tv=tv,
+        channel=None,
+        sport="tennis",
+    )
+
+
+def _round_name(comp: dict[str, Any]) -> str | None:
+    rnd = comp.get("round")
+    if isinstance(rnd, dict):
+        return rnd.get("displayName") or rnd.get("name")
+    if isinstance(rnd, str):
+        return rnd
+    for note in comp.get("notes") or []:
+        text = note.get("headline") or ""
+        if text:
+            return text
+    return (comp.get("type") or {}).get("text")
+
+
+def _player(competitor: dict[str, Any]) -> str:
+    athlete = competitor.get("athlete") or competitor.get("team") or {}
+    name = (athlete.get("shortName") or athlete.get("displayName") or "TBD").strip()
+    seed = competitor.get("seed")
+    try:
+        seed = int(seed) if seed not in (None, "") else None
+    except (TypeError, ValueError):
+        seed = None
+    return f"({seed}) {name}" if seed else name
+
+
+def _sets_won(competitor: dict[str, Any]) -> int | None:
+    scores = competitor.get("linescores") or []
+    if not scores:
+        return None
+    # ESPN gives per-set games; count sets this player won when both sides are present.
+    return None if not competitor.get("winner") and competitor.get("winner") is not False else (
+        len([s for s in scores if s.get("winner")]) or None
+    )
+
+
+def _status(comp: dict[str, Any]) -> str:
+    status_type = ((comp.get("status") or {}).get("type") or {})
+    name = (status_type.get("name") or "").upper()
+    state = (status_type.get("state") or "").lower()
+    if "POSTPONED" in name:
+        return "POSTPONED"
+    if "CANCEL" in name:
+        return "CANCELLED"
+    if "SUSPEND" in name or "DELAY" in name or "RAIN" in name:
+        return "SUSPENDED"
+    if state == "in":
+        return "IN_PLAY"
+    if state == "post":
+        return "FINISHED"
+    if comp.get("timeValid") is False:
+        return "SCHEDULED"
+    return "TIMED"
+
+
+def _slam_tv(tournament: str, broadcasters: dict[str, str]) -> str | None:
+    low = tournament.lower()
+    for key, value in broadcasters.items():
+        if ":" in key and key.split(":", 1)[1].lower() in low:
+            return value
+    return None

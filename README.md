@@ -28,6 +28,7 @@ soccer-instagram-bot/
   bot/fixtures.py    football-data.org client, timezone handling, sorting
   bot/espn.py        per-match US channel from ESPN's scoreboard feed (best effort)
   bot/espn_fixtures.py   women's sports schedule built from ESPN scoreboards
+  bot/tennis.py          WTA matches from ESPN's tournament-shaped tennis feed
   bot/data/us_broadcasters_womens.json   fallback channels for the women's profile
   bot/marquee.py     rivalries, knockout rounds, ranked matchups -> "Game of the day"
   bot/data/rivalries.json   rivalry list per competition
@@ -173,6 +174,7 @@ Optional variables: `IG_HANDLE_WOMENS`, `HASHTAGS_WOMENS`, and `COMPETITIONS_WOM
 | `WINTL` | Women's internationals | USWNT friendlies |
 | `LIGAF` | Liga F | ESPN coverage is patchy |
 | `WNBA` | WNBA | |
+| `WTA` | WTA tennis | singles only; Grand Slams from the round of 16, other events from the quarterfinals |
 | `NCAAWBB` | Women's college basketball | nationally televised games only |
 | `NCAAWVB` | Women's college volleyball | nationally televised games only |
 | `NCAAWSB` | College softball | nationally televised games only |
