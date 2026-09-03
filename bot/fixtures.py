@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -11,6 +13,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 API_URL = "https://api.football-data.org/v4/matches"
+log = logging.getLogger("soccer-bot.fixtures")
 BROADCASTERS_FILE = Path(__file__).parent / "data" / "us_broadcasters.json"
 
 # football-data.org's official names are long or unfamiliar to US fans; show these instead.
@@ -93,12 +96,44 @@ def fetch_matches(
         params["competitions"] = ",".join(comps)
 
     http = session or requests.Session()
-    response = http.get(API_URL, headers={"X-Auth-Token": token}, params=params, timeout=30)
-    if response.status_code != 200:
-        raise RuntimeError(
-            f"football-data.org returned {response.status_code}: {response.text[:300]}"
-        )
+    response = _get_with_throttle(http, token, params)
     return normalise(response.json(), day, tz, comps, broadcasters)
+
+
+def _get_with_throttle(http: requests.Session, token: str, params: dict[str, str],
+                       max_attempts: int = 3) -> requests.Response:
+    """GET honouring football-data.org's throttling headers.
+
+    Every response carries X-Requests-Available-Minute (calls left this minute) and
+    X-RequestCounter-Reset (seconds until the counter resets). A 429 means the
+    quota is spent; wait for the reset and retry instead of hammering the API.
+    """
+    for attempt in range(1, max_attempts + 1):
+        response = http.get(API_URL, headers={"X-Auth-Token": token}, params=params, timeout=30)
+        available = response.headers.get("X-Requests-Available-Minute")
+        reset = response.headers.get("X-RequestCounter-Reset")
+        if available is not None:
+            log.info("football-data.org quota: %s request(s) left this minute, resets in %ss", available, reset)
+
+        if response.status_code == 429 and attempt < max_attempts:
+            wait = min(_to_int(reset, default=60) + 1, 90)
+            log.warning("Rate limited by football-data.org; waiting %ss before retry %d/%d",
+                        wait, attempt + 1, max_attempts)
+            time.sleep(wait)
+            continue
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"football-data.org returned {response.status_code}: {response.text[:300]}"
+            )
+        return response
+    raise AssertionError("unreachable")
+
+
+def _to_int(value: str | None, default: int) -> int:
+    try:
+        return int(value) if value is not None else default
+    except ValueError:
+        return default
 
 
 def normalise(

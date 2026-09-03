@@ -69,3 +69,55 @@ def test_tz_label_and_time_format_config(monkeypatch):
 
     monkeypatch.setenv("TZ_LABEL", "EST")
     assert Config.from_env(require_secrets=False).tz_label(date(2026, 9, 5)) == "EST"
+
+
+class _FakeResponse:
+    def __init__(self, status, headers=None, payload=None):
+        self.status_code = status
+        self.headers = headers or {}
+        self._payload = payload or {"matches": []}
+        self.text = "rate limited" if status == 429 else ""
+
+    def json(self):
+        return self._payload
+
+
+class _FakeSession:
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.calls = []
+
+    def get(self, url, headers=None, params=None, timeout=None):
+        self.calls.append((url, headers, params))
+        return self.responses.pop(0)
+
+
+def test_fetch_sends_auth_header_and_retries_after_429(monkeypatch):
+    from bot import fixtures
+
+    sleeps = []
+    monkeypatch.setattr(fixtures.time, "sleep", lambda s: sleeps.append(s))
+    session = _FakeSession([
+        _FakeResponse(429, {"X-Requests-Available-Minute": "0", "X-RequestCounter-Reset": "7"}),
+        _FakeResponse(200, {"X-Requests-Available-Minute": "9"}, SAMPLE),
+    ])
+    matches = fixtures.fetch_matches("tok", date(2026, 9, 5), ZoneInfo("UTC"), ["PL"], session=session)
+
+    assert len(matches) == 4
+    assert sleeps == [8]  # reset seconds + 1
+    assert session.calls[0][1] == {"X-Auth-Token": "tok"}
+    assert session.calls[0][2]["competitions"] == "PL"
+    assert session.calls[0][2]["dateFrom"] == "2026-09-04"
+    assert session.calls[0][2]["dateTo"] == "2026-09-06"
+
+
+def test_fetch_raises_on_persistent_error():
+    from bot import fixtures
+
+    session = _FakeSession([_FakeResponse(403)])
+    try:
+        fixtures.fetch_matches("tok", date(2026, 9, 5), ZoneInfo("UTC"), session=session)
+    except RuntimeError as err:
+        assert "403" in str(err)
+    else:
+        raise AssertionError("expected RuntimeError")
