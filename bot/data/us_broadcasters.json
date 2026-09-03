@@ -1,0 +1,16 @@
+{
+  "_comment": "Where to watch each competition in the USA (English-language rights holder). Keyed by football-data.org competition code. Verified for the 2026-27 season; update when rights change.",
+  "PL": "NBC, USA Network & Peacock",
+  "ELC": "Paramount+ (select games on CBS)",
+  "PD": "ESPN+ (select games on ESPN/ABC)",
+  "BL1": "USA Network & Fandango (free)",
+  "SA": "Paramount+ & CBS Sports",
+  "FL1": "beIN Sports",
+  "DED": "ESPN+",
+  "PPL": "beIN Sports",
+  "CL": "Paramount+ & CBS Sports",
+  "BSA": "Fanatiz & TV Globo Internacional",
+  "CLI": "beIN Sports & Fanatiz",
+  "WC": "FOX & FS1 (Spanish: Telemundo & Peacock)",
+  "EC": "FOX & FS1"
+}

@@ -46,6 +46,8 @@ jobs:
           IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
           IG_API_BASE: ${{ vars.IG_API_BASE }}
           TIMEZONE: ${{ vars.TIMEZONE || 'America/New_York' }}
+          TIME_FORMAT: ${{ vars.TIME_FORMAT || '12h' }}
+          TZ_LABEL: ${{ vars.TZ_LABEL }}
           COMPETITIONS: ${{ vars.COMPETITIONS }}
           POST_WHEN_EMPTY: ${{ vars.POST_WHEN_EMPTY || 'false' }}
           HASHTAGS: ${{ vars.HASHTAGS || '#soccer #football #matchday #fixtures #futbol' }}

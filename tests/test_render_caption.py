@@ -17,7 +17,7 @@ def _many_matches(n: int, per_league: int = 6) -> list[Match]:
     base = datetime(2026, 9, 5, 12, tzinfo=timezone.utc)
     return [
         Match(competition=f"League {i // per_league}", competition_code=f"L{i // per_league}", home=f"Home {i}",
-              away=f"Away {i}", kickoff=base + timedelta(minutes=15 * i), status="TIMED")
+              away=f"Away {i}", kickoff=base + timedelta(minutes=15 * i), status="TIMED", tv="Some Network")
         for i in range(n)
     ]
 
@@ -55,9 +55,9 @@ def test_pagination_repeats_header_and_caps_pages():
 def test_caption_lists_matches_and_respects_limit():
     matches = normalise(SAMPLE, DAY, ZoneInfo("UTC"), [])
     caption = build_caption(matches, DAY, "UTC", "#soccer")
-    assert "Premier League" in caption
-    assert "12:30  Arsenal vs Chelsea" not in caption  # UTC, not BST
-    assert "11:30  Arsenal vs Chelsea" in caption
+    assert "🏆 Premier League\n📺 NBC, USA Network & Peacock" in caption
+    assert "11:30 AM  Arsenal vs Chelsea" in caption
+    assert "11:30  Arsenal vs Chelsea" in build_caption(matches, DAY, "UTC", twelve_hour=False)
     assert caption.endswith("#soccer")
 
     long_caption = build_caption(_many_matches(300), DAY, "UTC", "#soccer #football")

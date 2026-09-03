@@ -60,6 +60,7 @@ class _Line:
     kind: str  # "section" | "match" | "more"
     text: str = ""
     match: Match | None = None
+    tv: str | None = None
 
 
 def paginate(matches: Sequence[Match], max_pages: int = MAX_PAGES) -> list[list[_Line]]:
@@ -90,7 +91,7 @@ def paginate(matches: Sequence[Match], max_pages: int = MAX_PAGES) -> list[list[
         else:
             label = match.competition
         if needs_header:
-            current.append(_Line("section", label))
+            current.append(_Line("section", label, tv=match.tv))
             current_comp = match.competition
         current.append(_Line("match", match=match))
         used += needed
@@ -133,20 +134,27 @@ def _draw_footer(draw: ImageDraw.ImageDraw, tz_label: str, handle: str | None) -
 
 
 def render_page(
-    lines: Sequence[_Line], day: date, page: int, total: int, tz_label: str, handle: str | None
+    lines: Sequence[_Line],
+    day: date,
+    page: int,
+    total: int,
+    tz_label: str,
+    handle: str | None,
+    twelve_hour: bool = True,
 ) -> Image.Image:
     img = Image.new("RGB", (WIDTH, HEIGHT), BG)
     draw = ImageDraw.Draw(img)
     _draw_header(draw, day, page, total)
 
     section_font = _font(True, 30)
-    time_font = _font(True, 30)
+    tv_font = _font(False, 22)
+    time_font = _font(True, 28)
     team_font = _font(False, 32)
     vs_font = _font(False, 24)
     more_font = _font(False, 30)
 
     y = HEADER_HEIGHT
-    time_col_w = 150
+    time_col_w = 190 if twelve_hour else 150
     text_x = MARGIN + time_col_w + 28
     text_w = WIDTH - MARGIN - text_x
     stripe = False
@@ -154,7 +162,14 @@ def render_page(
     for line in lines:
         if line.kind == "section":
             y += 18
-            draw.text((MARGIN, y + 6), line.text.upper(), font=section_font, fill=ACCENT)
+            name_max_w = WIDTH - 2 * MARGIN
+            if line.tv:
+                tv_text = _ellipsize(draw, f"TV: {line.tv}", tv_font, (WIDTH - 2 * MARGIN) // 2)
+                tv_w = draw.textlength(tv_text, font=tv_font)
+                draw.text((WIDTH - MARGIN - tv_w, y + 14), tv_text, font=tv_font, fill=MUTED)
+                name_max_w -= int(tv_w) + 24
+            name = _ellipsize(draw, line.text.upper(), section_font, name_max_w)
+            draw.text((MARGIN, y + 6), name, font=section_font, fill=ACCENT)
             draw.line([MARGIN, y + SECTION_HEADER_H - 22, WIDTH - MARGIN, y + SECTION_HEADER_H - 22], fill=ACCENT, width=2)
             y += SECTION_HEADER_H - 18
             stripe = False
@@ -165,7 +180,7 @@ def render_page(
                 draw.rectangle([MARGIN - 16, y, WIDTH - MARGIN + 16, y + ROW_H], fill=BG_STRIPE)
             stripe = not stripe
             # Time pill
-            label = m.time_label
+            label = m.time_label(twelve_hour)
             pill_top, pill_bottom = y + 12, y + ROW_H - 12
             draw.rounded_rectangle([MARGIN, pill_top, MARGIN + time_col_w, pill_bottom], radius=10, fill=TIME_BG)
             tw = draw.textlength(label, font=time_font)
@@ -208,14 +223,22 @@ def render_empty(day: date, tz_label: str, handle: str | None) -> Image.Image:
 
 
 def render_all(
-    matches: Sequence[Match], day: date, tz_label: str, out_dir: Path, handle: str | None = None
+    matches: Sequence[Match],
+    day: date,
+    tz_label: str,
+    out_dir: Path,
+    handle: str | None = None,
+    twelve_hour: bool = True,
 ) -> list[Path]:
     """Render every page for `day` into `out_dir` and return the JPEG paths in order."""
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = day.isoformat()
     pages = paginate(matches) if matches else []
     images = (
-        [render_page(lines, day, i + 1, len(pages), tz_label, handle) for i, lines in enumerate(pages)]
+        [
+            render_page(lines, day, i + 1, len(pages), tz_label, handle, twelve_hour)
+            for i, lines in enumerate(pages)
+        ]
         if pages
         else [render_empty(day, tz_label, handle)]
     )

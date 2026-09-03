@@ -1,14 +1,27 @@
 """Fetch and normalise fixtures from football-data.org (v4)."""
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo
 
 import requests
 
 API_URL = "https://api.football-data.org/v4/matches"
+BROADCASTERS_FILE = Path(__file__).parent / "data" / "us_broadcasters.json"
+
+# football-data.org's official names are long or unfamiliar to US fans; show these instead.
+DISPLAY_NAMES = {
+    "PD": "La Liga",
+    "BSA": "Brasileirão",
+    "ELC": "Championship",
+    "CLI": "Copa Libertadores",
+    "EC": "European Championship",
+    "WC": "World Cup",
+}
 
 # Statuses where the kickoff time is meaningful.
 TIMED_STATUSES = {"TIMED", "IN_PLAY", "PAUSED", "FINISHED"}
@@ -25,11 +38,13 @@ class Match:
     home_score: int | None = None
     away_score: int | None = None
     stage: str | None = None
+    tv: str | None = None  # where to watch (US broadcaster), if known
 
-    @property
-    def time_label(self) -> str:
+    def time_label(self, twelve_hour: bool = True) -> str:
         """Short label for the time column: kickoff time, or the state of the match."""
         if self.status == "TIMED":
+            if twelve_hour:
+                return self.kickoff.strftime("%I:%M %p").lstrip("0")
             return self.kickoff.strftime("%H:%M")
         if self.status in {"IN_PLAY", "PAUSED"}:
             return "LIVE"
@@ -50,12 +65,19 @@ class Match:
         return f"{self.home_score}-{self.away_score}"
 
 
+def load_broadcasters(path: Path = BROADCASTERS_FILE) -> dict[str, str]:
+    """Competition code -> where to watch in the USA."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {code.upper(): name for code, name in data.items() if not code.startswith("_")}
+
+
 def fetch_matches(
     token: str,
     day: date,
     tz: ZoneInfo,
     competitions: Iterable[str] | None = None,
     session: requests.Session | None = None,
+    broadcasters: dict[str, str] | None = None,
 ) -> list[Match]:
     """Return all matches that kick off on `day` in timezone `tz`.
 
@@ -76,10 +98,18 @@ def fetch_matches(
         raise RuntimeError(
             f"football-data.org returned {response.status_code}: {response.text[:300]}"
         )
-    return normalise(response.json(), day, tz, comps)
+    return normalise(response.json(), day, tz, comps, broadcasters)
 
 
-def normalise(payload: dict[str, Any], day: date, tz: ZoneInfo, competitions: list[str]) -> list[Match]:
+def normalise(
+    payload: dict[str, Any],
+    day: date,
+    tz: ZoneInfo,
+    competitions: list[str],
+    broadcasters: dict[str, str] | None = None,
+) -> list[Match]:
+    if broadcasters is None:
+        broadcasters = load_broadcasters()
     matches: list[Match] = []
     for raw in payload.get("matches", []):
         comp = raw.get("competition") or {}
@@ -97,7 +127,7 @@ def normalise(payload: dict[str, Any], day: date, tz: ZoneInfo, competitions: li
         score = (raw.get("score") or {}).get("fullTime") or {}
         matches.append(
             Match(
-                competition=comp.get("name") or code or "Unknown competition",
+                competition=DISPLAY_NAMES.get(code) or comp.get("name") or code or "Unknown competition",
                 competition_code=code,
                 home=_team_name(raw.get("homeTeam")),
                 away=_team_name(raw.get("awayTeam")),
@@ -106,6 +136,7 @@ def normalise(payload: dict[str, Any], day: date, tz: ZoneInfo, competitions: li
                 home_score=score.get("home"),
                 away_score=score.get("away"),
                 stage=raw.get("stage"),
+                tv=broadcasters.get(code),
             )
         )
 

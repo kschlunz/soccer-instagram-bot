@@ -35,7 +35,7 @@ def run(argv: list[str] | None = None) -> int:
     cfg = Config.from_env(require_secrets=not args.dry_run)
     tz = cfg.tz
     day = date.fromisoformat(args.date) if args.date else datetime.now(tz).date()
-    tz_label = datetime.now(tz).strftime("%Z") or cfg.timezone
+    tz_label = cfg.tz_label(day)
 
     if args.sample:
         payload = json.loads(Path(args.sample).read_text())
@@ -49,8 +49,8 @@ def run(argv: list[str] | None = None) -> int:
         return 0
 
     out_dir = Path(args.out)
-    paths = render_all(matches, day, tz_label, out_dir, handle=args.handle)
-    caption = build_caption(matches, day, tz_label, cfg.hashtags)
+    paths = render_all(matches, day, tz_label, out_dir, handle=args.handle, twelve_hour=cfg.twelve_hour)
+    caption = build_caption(matches, day, tz_label, cfg.hashtags, twelve_hour=cfg.twelve_hour)
     (out_dir / f"{day.isoformat()}-caption.txt").write_text(caption, encoding="utf-8")
     log.info("Rendered %d image(s) to %s", len(paths), out_dir)
 

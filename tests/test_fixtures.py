@@ -20,13 +20,15 @@ def test_local_day_shifts_with_timezone():
     # In New York the 01:00Z match is still 5 Sept at 21:00, so all nine count.
     assert len(matches) == 9
     santos = next(m for m in matches if m.home == "Santos")
-    assert santos.time_label == "21:00"
+    assert santos.time_label() == "9:00 PM"
+    assert santos.time_label(twelve_hour=False) == "21:00"
+    assert santos.tv == "Fanatiz & TV Globo Internacional"
 
 
 def test_competition_filter_and_labels():
     matches = normalise(SAMPLE, date(2026, 9, 5), ZoneInfo("Europe/London"), ["PL"])
     assert {m.competition_code for m in matches} == {"PL"}
-    labels = {m.home: m.time_label for m in matches}
+    labels = {m.home: m.time_label(twelve_hour=False) for m in matches}
     assert labels["Arsenal"] == "12:30"  # BST
     assert labels["Everton"] == "PPD"
 
@@ -37,6 +39,33 @@ def test_ordering_groups_competitions_by_first_kickoff():
     # Premier League (11:30) first, then Primera Division (16:15), Bundesliga (17:30), Brasileiro
     assert comps == sorted(comps, key=comps.index)
     assert comps[0] == "Premier League"
-    assert comps[-1].startswith("Campeonato")
+    assert comps[-1] == "Brasileirão"
     tbd = next(m for m in matches if m.status == "SCHEDULED")
-    assert tbd.time_label == "TBD"
+    assert tbd.time_label() == "TBD"
+
+
+def test_every_free_tier_competition_has_a_us_broadcaster():
+    from bot.fixtures import load_broadcasters
+
+    tv = load_broadcasters()
+    for code in ["PL", "ELC", "PD", "BL1", "SA", "FL1", "DED", "PPL", "CL", "EC", "WC", "BSA", "CLI"]:
+        assert tv.get(code), code
+
+
+def test_tz_label_and_time_format_config(monkeypatch):
+    from bot.config import Config
+
+    monkeypatch.setenv("TIMEZONE", "America/New_York")
+    cfg = Config.from_env(require_secrets=False)
+    assert cfg.tz_label(date(2026, 9, 5)) == "ET"
+    assert cfg.twelve_hour is True
+
+    monkeypatch.setenv("TIMEZONE", "Europe/London")
+    monkeypatch.setenv("TIME_FORMAT", "24h")
+    cfg = Config.from_env(require_secrets=False)
+    assert cfg.tz_label(date(2026, 9, 5)) == "BST"
+    assert cfg.tz_label(date(2026, 1, 5)) == "GMT"
+    assert cfg.twelve_hour is False
+
+    monkeypatch.setenv("TZ_LABEL", "EST")
+    assert Config.from_env(require_secrets=False).tz_label(date(2026, 9, 5)) == "EST"

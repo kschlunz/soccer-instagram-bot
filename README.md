@@ -1,14 +1,16 @@
 # Soccer Instagram Bot
 
-Posts a picture of every soccer match happening today, with kickoff times, to an
-Instagram account once a day. It runs for free on GitHub Actions.
+Posts a picture of every soccer match happening today, with kickoff times in US
+Eastern time and where to watch each competition in the USA, to an Instagram account
+once a day. It runs for free on GitHub Actions.
 
 How it works, once a day:
 
 1. Pulls today's fixtures from [football-data.org](https://www.football-data.org/)
    (Premier League, La Liga, Bundesliga, Serie A, Ligue 1, Champions League and more).
-2. Renders them into 1080x1350 images grouped by competition. If one image is not
-   enough, it posts a carousel (up to 10 slides).
+2. Renders them into 1080x1350 images grouped by competition, with the US broadcaster
+   for each competition and kickoff times in ET (12-hour). If one image is not enough,
+   it posts a carousel (up to 10 slides).
 3. Commits the images to a `soccer-bot-images` branch so Instagram can download them
    from `raw.githubusercontent.com` (Instagram only accepts a public URL, not an upload).
 4. Publishes the post through the Instagram Graph API with a caption listing every match.
@@ -21,6 +23,7 @@ soccer-instagram-bot/
   bot/caption.py     caption text
   bot/hosting.py     pushes images to the images branch with git plumbing
   bot/instagram.py   Graph API: containers, carousel, publish
+  bot/data/us_broadcasters.json   where to watch each competition in the USA
   .github/workflows/daily-post.yml
 ```
 
@@ -81,6 +84,8 @@ Optional **Variables**:
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `TIMEZONE` | `America/New_York` | Timezone kickoff times are shown in (IANA name) |
+| `TIME_FORMAT` | `12h` | `12h` (7:30 PM) or `24h` (19:30) |
+| `TZ_LABEL` | `ET` for New York | Text after "All times"; auto for US zones, else the zone abbreviation |
 | `COMPETITIONS` | all | Comma-separated codes, e.g. `PL,PD,BL1,SA,FL1,CL` |
 | `IG_API_BASE` | `https://graph.facebook.com/v21.0` | Use `https://graph.instagram.com/v21.0` for Instagram Login tokens |
 | `POST_WHEN_EMPTY` | `false` | Post a "no matches today" image on quiet days |
@@ -91,7 +96,35 @@ Competition codes: `PL` Premier League, `ELC` Championship, `PD` La Liga, `BL1`
 Bundesliga, `SA` Serie A, `FL1` Ligue 1, `DED` Eredivisie, `PPL` Primeira Liga,
 `CL` Champions League, `EC` Euros, `WC` World Cup, `BSA` Brasileirão, `CLI` Libertadores.
 
-### 4. Schedule
+### 4. Where to watch (USA)
+
+Each competition header shows the US English-language rights holder, taken from
+`bot/data/us_broadcasters.json`. football-data.org does not provide per-match TV
+listings, so this is per competition (for example every Premier League match shows
+"NBC, USA Network & Peacock" rather than which of the three has that game).
+
+Current values, checked for the 2026-27 season:
+
+| Competition | Where to watch |
+| --- | --- |
+| Premier League | NBC, USA Network & Peacock |
+| Championship | Paramount+ (select games on CBS) |
+| La Liga | ESPN+ (select games on ESPN/ABC) |
+| Bundesliga | USA Network & Fandango (free) |
+| Serie A | Paramount+ & CBS Sports |
+| Ligue 1 | beIN Sports |
+| Eredivisie | ESPN+ |
+| Primeira Liga | beIN Sports |
+| Champions League | Paramount+ & CBS Sports |
+| Brasileirão | Fanatiz & TV Globo Internacional |
+| Copa Libertadores | beIN Sports & Fanatiz |
+| World Cup | FOX & FS1 (Spanish: Telemundo & Peacock) |
+| Euros | FOX & FS1 |
+
+Rights move between networks most summers; edit the JSON file when they do. Libertadores
+rights are only confirmed through the 2026 edition.
+
+### 5. Schedule
 
 `.github/workflows/daily-post.yml` runs at 11:00 UTC daily. Change the cron line to move
 it. You can also run it by hand from the Actions tab: **Daily matchday post > Run

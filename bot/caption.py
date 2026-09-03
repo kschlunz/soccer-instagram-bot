@@ -9,7 +9,9 @@ from .fixtures import Match
 MAX_CAPTION = 2200  # Instagram limit
 
 
-def build_caption(matches: Sequence[Match], day: date, tz_label: str, hashtags: str = "") -> str:
+def build_caption(
+    matches: Sequence[Match], day: date, tz_label: str, hashtags: str = "", twelve_hour: bool = True
+) -> str:
     title = day.strftime("%A, %d %B %Y").replace(" 0", " ")
     lines = [f"⚽ Today's matches — {title}", f"🕒 All times {tz_label}", ""]
 
@@ -22,9 +24,11 @@ def build_caption(matches: Sequence[Match], day: date, tz_label: str, hashtags: 
                 if current is not None:
                     lines.append("")
                 lines.append(f"🏆 {m.competition}")
+                if m.tv:
+                    lines.append(f"📺 {m.tv}")
                 current = m.competition
             middle = m.score_label or "vs"
-            lines.append(f"{m.time_label}  {m.home} {middle} {m.away}")
+            lines.append(f"{m.time_label(twelve_hour)}  {m.home} {middle} {m.away}")
 
     body = "\n".join(lines).rstrip()
     footer = f"\n\n{hashtags.strip()}" if hashtags.strip() else ""
