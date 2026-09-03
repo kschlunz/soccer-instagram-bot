@@ -49,6 +49,9 @@ class InstagramClient:
             params["caption"] = caption
         return self._request("POST", f"{self.user_id}/media", **params)["id"]
 
+    def create_story_container(self, image_url: str) -> str:
+        return self._request("POST", f"{self.user_id}/media", media_type="STORIES", image_url=image_url)["id"]
+
     def create_carousel_container(self, children: Sequence[str], caption: str) -> str:
         return self._request(
             "POST", f"{self.user_id}/media",
@@ -73,6 +76,12 @@ class InstagramClient:
         return self._request("POST", f"{self.user_id}/media_publish", creation_id=creation_id)["id"]
 
     # -- high level ----------------------------------------------------------
+    def post_story(self, image_url: str) -> str:
+        """Publish one image to Stories. Returns the media id."""
+        container = self.create_story_container(image_url)
+        self.wait_until_ready(container)
+        return self.publish(container)
+
     def post_images(self, image_urls: Sequence[str], caption: str) -> str:
         """Publish one image, or a carousel when several URLs are given. Returns the media id."""
         if not image_urls:

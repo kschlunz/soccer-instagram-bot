@@ -29,7 +29,9 @@ soccer-instagram-bot/
   bot/espn.py        per-match US channel from ESPN's scoreboard feed (best effort)
   bot/espn_fixtures.py   women's sports schedule built from ESPN scoreboards
   bot/data/us_broadcasters_womens.json   fallback channels for the women's profile
-  bot/render.py      Pillow image renderer + pagination
+  bot/marquee.py     rivalries, knockout rounds, ranked matchups -> "Game of the day"
+  bot/data/rivalries.json   rivalry list per competition
+  bot/render.py      Pillow image renderer, pagination, featured slide, Stories canvas
   bot/caption.py     caption text
   bot/hosting.py     pushes images to the images branch with git plumbing
   bot/instagram.py   Graph API: containers, carousel, publish
@@ -37,6 +39,7 @@ soccer-instagram-bot/
   bot/refresh_token.py   renews the Instagram token
   .github/workflows/daily-post.yml         daily soccer post (11:00 UTC)
   .github/workflows/daily-post-womens.yml  daily women's sports post (11:30 UTC)
+  .github/workflows/weekend-preview.yml    Friday weekend preview, both accounts (21:00 UTC)
   .github/workflows/refresh-token.yml   token refresh / reminder
 ```
 
@@ -103,6 +106,8 @@ Optional **Variables**:
 | `IG_API_BASE` | `https://graph.facebook.com/v21.0` | Use `https://graph.instagram.com/v21.0` for Instagram Login tokens |
 | `POST_WHEN_EMPTY` | `false` | Post a "no matches today" image on quiet days |
 | `ESPN_ENRICH` | `true` | Look up per-match US channels from ESPN |
+| `POST_STORIES` | `true` | Also publish the first slides to Stories |
+| `STORY_MAX` | `3` | How many slides go to Stories |
 | `HASHTAGS` | `#soccer #football ...` | Caption footer |
 | `IG_HANDLE` | none | Handle printed in the image footer, e.g. `@dailykickoffs` |
 
@@ -206,7 +211,23 @@ Only tokens from "Instagram API with Instagram Login" (`IG_API_BASE` on
 `graph.instagram.com`) can be refreshed this way. Facebook-login tokens need a manual
 exchange with the app secret.
 
-### 7. Schedule
+### 7. Stories, weekend preview and marquee games
+
+- **Stories.** Every feed post also goes to Stories: the first slides (up to `STORY_MAX`,
+  default 3) are placed on a 9:16 canvas inside Instagram's safe zone and published one by
+  one. Set the `POST_STORIES` variable to `false` to turn this off. A Story failure does
+  not undo the feed post; the run just ends red so you notice.
+- **Weekend preview.** `.github/workflows/weekend-preview.yml` runs Friday at 5 PM Eastern
+  for both accounts and posts the coming Saturday and Sunday as one carousel, with a
+  slide per day and a "📅" section per day in the caption. Run it by hand with a `date`
+  to preview any weekend.
+- **Marquee games.** Rivalries (`bot/data/rivalries.json`), knockout rounds and finals,
+  and ranked college matchups (both ranked, or a top-5 team) are flagged. Up to three
+  lead the carousel on a big-type "Game of the day" slide, get a ⭐ in the caption and
+  a ★ on their schedule row. Add a rivalry as `[team A, team B, label]` under the
+  competition code.
+
+### 8. Schedule
 
 `.github/workflows/daily-post.yml` runs at 11:00 UTC daily. Change the cron line to move
 it. You can also run it by hand from the Actions tab: **Daily matchday post > Run

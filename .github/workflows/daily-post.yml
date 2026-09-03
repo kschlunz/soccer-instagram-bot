@@ -14,6 +14,10 @@ on:
         description: "Render only, do not post to Instagram"
         type: boolean
         default: false
+      stories_only:
+        description: "Publish only the Stories, skip the feed post"
+        type: boolean
+        default: false
 
 permissions:
   contents: write   # needed to push the rendered images to the images branch
@@ -51,16 +55,20 @@ jobs:
           COMPETITIONS: ${{ vars.COMPETITIONS }}
           POST_WHEN_EMPTY: ${{ vars.POST_WHEN_EMPTY || 'false' }}
           ESPN_ENRICH: ${{ vars.ESPN_ENRICH || 'true' }}
+          POST_STORIES: ${{ vars.POST_STORIES || 'true' }}
+          STORY_MAX: ${{ vars.STORY_MAX || '3' }}
           HASHTAGS: "${{ vars.HASHTAGS || '#soccer #football #matchday #fixtures #futbol' }}"
           IG_HANDLE: ${{ vars.IG_HANDLE }}
           GIT_AUTHOR_NAME: github-actions[bot]
           GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
           INPUT_DATE: ${{ inputs.date }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_STORIES_ONLY: ${{ inputs.stories_only }}
         run: |
           ARGS=""
           if [ -n "$INPUT_DATE" ]; then ARGS="$ARGS --date $INPUT_DATE"; fi
           if [ "$INPUT_DRY_RUN" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ "$INPUT_STORIES_ONLY" = "true" ]; then ARGS="$ARGS --stories-only"; fi
           if [ -n "$IG_HANDLE" ]; then ARGS="$ARGS --handle $IG_HANDLE"; fi
           python -m bot.main $ARGS
 

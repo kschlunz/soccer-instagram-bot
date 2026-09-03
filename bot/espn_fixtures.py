@@ -130,6 +130,7 @@ def events_to_matches(
                     tv=tv,
                     channel=channel,
                     sport=league.sport,
+                    stage=_headline(comp, event),
                 )
             )
         except (KeyError, IndexError, AttributeError, ValueError, TypeError) as err:
@@ -143,6 +144,16 @@ def major_networks_only(channel: str | None) -> str | None:
         return None
     kept = [c for c in (part.strip() for part in channel.split("/")) if c in MAJOR_NETWORKS]
     return " / ".join(kept) if kept else None
+
+
+def _headline(comp: dict[str, Any], event: dict[str, Any]) -> str | None:
+    """ESPN's note for the game, e.g. 'NWSL Playoffs - Semifinal', when present."""
+    for note in (comp.get("notes") or event.get("notes") or []):
+        text = (note.get("headline") or "").strip()
+        if text:
+            return text
+    season_type = ((event.get("season") or {}).get("slug") or "").replace("-", " ")
+    return season_type.title() if season_type and season_type != "regular season" else None
 
 
 def _status(comp: dict[str, Any], event: dict[str, Any]) -> str:

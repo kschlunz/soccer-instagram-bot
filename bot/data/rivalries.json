@@ -1,0 +1,57 @@
+{
+  "_comment": "Rivalries that make a game marquee, keyed by competition code. Each entry: [team A, team B, label]. Team names are matched loosely (case/accents ignored, substring); separate aliases with | e.g. Barcelona|Barça.",
+  "PL": [
+    ["Arsenal", "Tottenham", "North London Derby"],
+    ["Liverpool", "Manchester United", "Liverpool v United"],
+    ["Liverpool", "Everton", "Merseyside Derby"],
+    ["Manchester City", "Manchester United", "Manchester Derby"],
+    ["Liverpool", "Manchester City", "Title showdown"],
+    ["Arsenal", "Chelsea", "London Derby"],
+    ["Chelsea", "Tottenham", "London Derby"],
+    ["Arsenal", "Manchester City", "Title showdown"],
+    ["Newcastle", "Sunderland", "Tyne-Wear Derby"]
+  ],
+  "PD": [
+    ["Real Madrid", "Barcelona|Barça", "El Clásico"],
+    ["Atlético", "Real Madrid", "Madrid Derby"],
+    ["Sevilla", "Betis", "Seville Derby"],
+    ["Barcelona|Barça", "Atlético|Atletico", "Top-of-the-table clash"]
+  ],
+  "BL1": [
+    ["Bayern", "Dortmund", "Der Klassiker"],
+    ["Bayer", "Bayern", "Title showdown"],
+    ["Schalke", "Dortmund", "Revierderby"]
+  ],
+  "SA": [
+    ["Inter", "AC Milan|Milan", "Derby della Madonnina"],
+    ["Juventus", "Inter", "Derby d'Italia"],
+    ["Roma", "Lazio", "Derby della Capitale"],
+    ["Juventus", "Milan", "Big-match Sunday"],
+    ["Napoli", "Juventus", "Big-match Sunday"]
+  ],
+  "FL1": [
+    ["Paris|PSG", "Marseille", "Le Classique"],
+    ["Lyon", "Saint-Étienne", "Derby du Rhône"]
+  ],
+  "DED": [["Ajax", "Feyenoord", "De Klassieker"], ["PSV", "Ajax", "Title showdown"]],
+  "PPL": [["Benfica", "Porto", "O Clássico"], ["Benfica", "Sporting", "Lisbon Derby"]],
+  "BSA": [
+    ["Flamengo", "Fluminense", "Fla-Flu"],
+    ["Corinthians", "Palmeiras", "Derby Paulista"],
+    ["Grêmio", "Internacional", "Grenal"],
+    ["São Paulo", "Corinthians", "Majestoso"],
+    ["Flamengo", "Vasco", "Clássico dos Milhões"]
+  ],
+  "NWSL": [
+    ["Portland", "Seattle", "Cascadia Clash"],
+    ["Angel City", "San Diego", "SoCal Derby"],
+    ["Gotham", "Washington", "I-95 Rivalry"],
+    ["Kansas City", "Orlando", "Top-of-the-table clash"]
+  ],
+  "WNBA": [
+    ["Liberty", "Aces", "Finals rematch"],
+    ["Fever", "Sky", "Clark v Reese"],
+    ["Liberty", "Lynx", "Finals rematch"]
+  ],
+  "WSL": [["Arsenal", "Chelsea", "Title showdown"], ["Manchester City", "Manchester United", "Manchester Derby"], ["Arsenal", "Tottenham", "North London Derby"]]
+}

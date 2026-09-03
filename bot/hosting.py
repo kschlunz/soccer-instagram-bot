@@ -92,7 +92,7 @@ def _publish_once(paths: Sequence[Path], branch: str, keep_days: int, remote: st
             rel_paths.append(rel)
 
         tree = _git("write-tree", env=env)
-        message = f"Add {subdir} images for {paths[0].stem.rsplit('-', 1)[0] if paths else date.today()}"
+        message = f"Add {subdir} images for {paths[0].stem[:10] if paths else date.today()}"
         commit_args = ["commit-tree", tree, "-m", message]
         if parent:
             commit_args += ["-p", parent]
@@ -114,7 +114,7 @@ def _prune_old(parent: str, keep_days: int, env: dict[str, str], subdir: str = I
         return
     cutoff = date.today() - timedelta(days=keep_days)
     for entry in _git("ls-tree", "-r", "--name-only", parent, env=env).splitlines():
-        match = re.match(rf"{re.escape(subdir)}/(\d{{4}}-\d{{2}}-\d{{2}})-\d+\.jpg$", entry)
+        match = re.match(rf"{re.escape(subdir)}/(\d{{4}}-\d{{2}}-\d{{2}})-[^/]+\.jpg$", entry)
         if match and date.fromisoformat(match.group(1)) < cutoff:
             _git("update-index", "--force-remove", entry, env=env)
 

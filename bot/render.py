@@ -12,6 +12,7 @@ from PIL import Image, ImageDraw, ImageFont
 from .fixtures import Match
 
 WIDTH, HEIGHT = 1080, 1350
+STORY_WIDTH, STORY_HEIGHT = 1080, 1920  # Instagram Stories are 9:16
 MARGIN = 72
 HEADER_HEIGHT = 250
 FOOTER_HEIGHT = 110
@@ -155,6 +156,7 @@ def _draw_header(
     title: str = "TODAY'S MATCHES",
     th: Theme = DEFAULT_THEME,
     tagline: str | None = None,
+    date_text: str | None = None,
 ) -> None:
     sub_font = _font(False, 34)
     draw.rectangle([0, 0, WIDTH, HEADER_HEIGHT], fill=th.bg)
@@ -167,7 +169,8 @@ def _draw_header(
         size -= 2
         title_font = _font(True, size)
     draw.text((MARGIN + 40, 78 + (64 - size) // 2), title, font=title_font, fill=th.text)
-    date_text = day.strftime("%A, %-d %B %Y") if os.name != "nt" else day.strftime("%A, %d %B %Y")
+    if not date_text:
+        date_text = day.strftime("%A, %-d %B %Y") if os.name != "nt" else day.strftime("%A, %d %B %Y")
     draw.text((MARGIN + 40, 160), date_text, font=sub_font, fill=th.muted)
     if tagline:
         tag_font = _font(True, 22)
@@ -249,6 +252,8 @@ def render_page(
             draw.text((MARGIN + (time_col_w - tw) / 2, pill_top + 6), label, font=time_font, fill=th.time_text)
             # Teams: "Home vs Away" for soccer, "Away at Home" for US sports
             left_name, vs, right_name = m.display_pair()
+            if m.marquee:
+                left_name = f"\u2605 {left_name}"
             vs_w = draw.textlength(f"  {vs}  ", font=vs_font)
             side_w = (text_w - vs_w) / 2
             left = _ellipsize(draw, left_name, team_font, int(side_w))
@@ -295,6 +300,135 @@ def render_empty(
     return img
 
 
+def _fit_font(draw: ImageDraw.ImageDraw, text: str, bold: bool, size: int, max_w: int, min_size: int = 30):
+    font = _font(bold, size)
+    while size > min_size and draw.textlength(text, font=font) > max_w:
+        size -= 2
+        font = _font(bold, size)
+    return font
+
+
+def render_featured(
+    games: Sequence[Match],
+    day: date,
+    tz_label: str,
+    handle: str | None,
+    twelve_hour: bool,
+    th: Theme,
+    tagline: str | None,
+    page: int,
+    total: int,
+    show_day: bool = False,
+    date_text: str | None = None,
+) -> Image.Image:
+    """Big-type slide for up to three marquee games."""
+    img = Image.new("RGB", (WIDTH, HEIGHT), th.bg)
+    draw = ImageDraw.Draw(img)
+    heading = "GAME OF THE DAY" if len(games) == 1 else "GAMES OF THE DAY"
+    if show_day:
+        heading = "MARQUEE MATCHUPS" if len(games) > 1 else "MARQUEE MATCHUP"
+    _draw_header(draw, day, page, total, heading, th, tagline, date_text)
+
+    usable_top, usable_bottom = HEADER_HEIGHT + 20, HEIGHT - FOOTER_HEIGHT - 20
+    block_h = (usable_bottom - usable_top) // max(len(games), 1)
+    comp_font = _font(True, 26)
+    reason_font = _font(True, 30)
+    info_font = _font(False, 32)
+    vs_font = _font(False, 34)
+    max_w = WIDTH - 2 * MARGIN
+
+    for i, m in enumerate(games):
+        top = usable_top + i * block_h
+        centre_y = top + block_h / 2
+        if i > 0:
+            draw.line([MARGIN, top, WIDTH - MARGIN, top], fill=th.stripe, width=2)
+
+        left, mid, right = m.display_pair()
+        if block_h >= 700:      # single game: stack the two names
+            name_font = _fit_font(draw, max(left, right, key=len), True, 84, max_w, 44)
+            lines = [(left, name_font, th.text), (mid, vs_font, th.muted), (right, name_font, th.text)]
+        else:                   # two or three games: one line each
+            one_line = f"{left}  {mid}  {right}"
+            name_font = _fit_font(draw, one_line, True, 60, max_w, 32)
+            lines = [(one_line, name_font, th.text)]
+
+        # Measure the whole block so it can be vertically centred
+        heights = [26 + 14, *(f.size + 10 for _, f, _ in lines), 30 + 12, 32]
+        y = centre_y - sum(heights) / 2
+        comp = m.competition.upper()
+        draw.text(((WIDTH - draw.textlength(comp, font=comp_font)) / 2, y), comp, font=comp_font, fill=th.accent)
+        y += heights[0]
+        for text, font, colour in lines:
+            draw.text(((WIDTH - draw.textlength(text, font=font)) / 2, y), text, font=font, fill=colour)
+            y += font.size + 10
+        reason = (m.marquee or "").upper()
+        draw.text(((WIDTH - draw.textlength(reason, font=reason_font)) / 2, y), reason, font=reason_font, fill=th.highlight)
+        y += 30 + 12
+        when = m.time_label(twelve_hour)
+        if show_day and m.status == "TIMED":
+            when = f"{m.kickoff.strftime('%a')} {when}"
+        info = f"{when}  ·  {m.channel or m.tv}" if (m.channel or m.tv) else when
+        draw.text(((WIDTH - draw.textlength(info, font=info_font)) / 2, y), info, font=info_font, fill=th.muted)
+
+    _draw_footer(draw, tz_label, handle, th)
+    return img
+
+
+def render_days(
+    day_matches: Sequence[tuple[date, Sequence[Match]]],
+    tz_label: str,
+    out_dir: Path,
+    stamp: str,
+    handle: str | None = None,
+    twelve_hour: bool = True,
+    title: str = "TODAY'S MATCHES",
+    theme: str = "green",
+    tagline: str | None = None,
+    featured_games: Sequence[Match] = (),
+) -> list[Path]:
+    """Render a carousel covering one or more days, optionally led by a featured slide."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    th = THEMES.get(theme, DEFAULT_THEME)
+    multi_day = len(day_matches) > 1
+    budget = MAX_PAGES - (1 if featured_games else 0)
+
+    # Paginate each day, then trim to the carousel budget.
+    pages: list[tuple[date, list[_Line]]] = []
+    for day, matches in day_matches:
+        for lines in (paginate(matches, max_pages=budget) if matches else []):
+            pages.append((day, lines))
+    if len(pages) > budget:
+        dropped = sum(1 for _, lines in pages[budget:] for l in lines if l.kind == "match")
+        pages = pages[:budget]
+        last = pages[-1][1]
+        if last and last[-1].kind == "match":
+            last.pop()
+            dropped += 1
+        last.append(_Line("more", f"+{dropped} more \u2014 full list in the caption"))
+
+    total = len(pages) + (1 if featured_games else 0) if pages or featured_games else 1
+    images: list[Image.Image] = []
+    first_day = day_matches[0][0]
+    if featured_games:
+        span = None
+        if multi_day:
+            last_day = day_matches[-1][0]
+            span = f"{first_day.strftime('%a %d')} \u2013 {last_day.strftime('%a %d %B %Y')}".replace(" 0", " ")
+        images.append(render_featured(featured_games, first_day, tz_label, handle, twelve_hour, th, tagline,
+                                      1, total, show_day=multi_day, date_text=span))
+    for i, (day, lines) in enumerate(pages):
+        images.append(render_page(lines, day, len(images) + 1, total, tz_label, handle, twelve_hour, title, th, tagline))
+    if not images:
+        images.append(render_empty(first_day, tz_label, handle, title, th, tagline))
+
+    paths: list[Path] = []
+    for i, img in enumerate(images, start=1):
+        path = out_dir / f"{stamp}-{i}.jpg"
+        img.save(path, "JPEG", quality=92, optimize=True)  # Instagram only accepts JPEG
+        paths.append(path)
+    return paths
+
+
 def render_all(
     matches: Sequence[Match],
     day: date,
@@ -305,24 +439,22 @@ def render_all(
     title: str = "TODAY'S MATCHES",
     theme: str = "green",
     tagline: str | None = None,
+    featured_games: Sequence[Match] = (),
 ) -> list[Path]:
     """Render every page for `day` into `out_dir` and return the JPEG paths in order."""
-    out_dir.mkdir(parents=True, exist_ok=True)
-    stamp = day.isoformat()
+    return render_days([(day, matches)], tz_label, out_dir, day.isoformat(), handle, twelve_hour,
+                       title, theme, tagline, featured_games)
+
+
+def make_story_images(paths: Sequence[Path], theme: str = "green", limit: int = 3) -> list[Path]:
+    """Place carousel slides on a 9:16 canvas for Stories, keeping them inside the safe zone."""
     th = THEMES.get(theme, DEFAULT_THEME)
-    pages = paginate(matches) if matches else []
-    images = (
-        [
-            render_page(lines, day, i + 1, len(pages), tz_label, handle, twelve_hour, title, th, tagline)
-            for i, lines in enumerate(pages)
-        ]
-        if pages
-        else [render_empty(day, tz_label, handle, title, th, tagline)]
-    )
-    paths: list[Path] = []
-    for i, img in enumerate(images, start=1):
-        path = out_dir / f"{stamp}-{i}.jpg"
-        # Instagram's publishing API only accepts JPEG.
-        img.save(path, "JPEG", quality=92, optimize=True)
-        paths.append(path)
-    return paths
+    out: list[Path] = []
+    for path in list(paths)[:limit]:
+        with Image.open(path) as slide:
+            canvas = Image.new("RGB", (STORY_WIDTH, STORY_HEIGHT), th.bg)
+            canvas.paste(slide, (0, (STORY_HEIGHT - slide.height) // 2))
+        story_path = path.with_name(f"{path.stem}-story.jpg")
+        canvas.save(story_path, "JPEG", quality=92, optimize=True)
+        out.append(story_path)
+    return out

@@ -44,6 +44,7 @@ class Match:
     tv: str | None = None  # where to watch this competition in the US (fallback)
     channel: str | None = None  # exact US channel for this match, when a per-match source knows it
     sport: str = "soccer"
+    marquee: str | None = None  # why this is a big game ("El Clásico", "Semifinal"), if it is
 
     def display_pair(self) -> tuple[str, str, str]:
         """(left, middle, right) as it should read: 'Home vs Away' for soccer, 'Away at Home' for US sports."""

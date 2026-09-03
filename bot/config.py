@@ -14,6 +14,8 @@ PROFILES: dict[str, dict[str, str]] = {
         "broadcasters_file": "us_broadcasters.json",
         "theme": "green",
         "tagline": "",
+        "weekend_title": "WEEKEND MATCHES",
+        "weekend_caption_title": "📅 Weekend preview",
     },
     "womens": {
         "title": "TODAY IN WOMEN'S SPORTS",
@@ -23,6 +25,8 @@ PROFILES: dict[str, dict[str, str]] = {
         "broadcasters_file": "us_broadcasters_womens.json",
         "theme": "purple",
         "tagline": "What's on, when it's on",
+        "weekend_title": "WEEKEND IN WOMEN'S SPORTS",
+        "weekend_caption_title": "📅 Weekend preview",
     },
 }
 
@@ -64,6 +68,8 @@ class Config:
     hashtags: str = "#soccer #football #matchday #fixtures"
     keep_days: int = 30
     espn_enrich: bool = True
+    post_stories: bool = True
+    story_max: int = 3
 
     @property
     def tz(self) -> ZoneInfo:
@@ -101,6 +107,8 @@ class Config:
             hashtags=os.environ.get("HASHTAGS") or PROFILES[profile]["hashtags"],
             keep_days=int(os.environ.get("IMAGES_KEEP_DAYS") or 30),
             espn_enrich=_bool(os.environ.get("ESPN_ENRICH"), True),
+            post_stories=_bool(os.environ.get("POST_STORIES"), True),
+            story_max=int(os.environ.get("STORY_MAX") or 3),
         )
         if require_secrets:
             required = [("IG_USER_ID", cfg.ig_user_id), ("IG_ACCESS_TOKEN", cfg.ig_access_token)]
