@@ -68,6 +68,16 @@ def events_to_matches(
         competition_name = f"{tournament} · Women's Singles"
 
         kept_early = 0
+        todays = [c for c, d in _competitions(event)
+                  if _is_singles(d, c) and _local_date(c, tz) == day]
+        log.info("ESPN tennis %s: %d women's singles match(es) dated %s", tournament, len(todays), day)
+        for c in todays[:4]:
+            log.info("  sample: round=%r date=%r timeValid=%r broadcast=%r broadcasts=%r geo=%r",
+                     (c.get("round") or {}).get("displayName") if isinstance(c.get("round"), dict) else c.get("round"),
+                     c.get("date"), c.get("timeValid"), c.get("broadcast"),
+                     [b.get("names") for b in c.get("broadcasts") or []],
+                     [((g.get("media") or {}).get("shortName"), g.get("lang"), (g.get("market") or {}).get("type"))
+                      for g in c.get("geoBroadcasts") or []])
         for comp, draw in _competitions(event):
             key = str(comp.get("id") or comp.get("uid") or id(comp))
             if key in seen:
@@ -133,7 +143,7 @@ def _match(comp, competition_name, code, day, tz, tv, min_round) -> tuple[Match 
     importance = _importance(round_name)
     if importance is None or "qualifying" in (round_name or "").lower():
         return None, False
-    channel = channels_for(comp)
+    channel = channels_for(comp) or (comp.get("broadcast") or "").strip() or None
     early = importance < min_round
     if early:
         channel = major_networks_only(channel)
@@ -173,6 +183,19 @@ def _importance(round_name: str | None) -> int | None:
         if key in low:
             return value
     return None
+
+
+def _local_date(comp: dict[str, Any], tz: ZoneInfo) -> date | None:
+    raw = comp.get("date")
+    if not raw:
+        return None
+    try:
+        utc = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if utc.tzinfo is None:
+        utc = utc.replace(tzinfo=timezone.utc)
+    return utc.astimezone(tz).date()
 
 
 def _round_name(comp: dict[str, Any]) -> str | None:
