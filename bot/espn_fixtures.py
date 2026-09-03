@@ -137,6 +137,16 @@ def events_to_matches(
     return out
 
 
+def _headline(comp: dict[str, Any], event: dict[str, Any]) -> str | None:
+    """ESPN's note for the game, e.g. 'NWSL Playoffs - Semifinal', when present."""
+    for note in (comp.get("notes") or event.get("notes") or []):
+        text = (note.get("headline") or "").strip()
+        if text:
+            return text
+    season_type = ((event.get("season") or {}).get("slug") or "").replace("-", " ")
+    return season_type.title() if season_type and season_type != "regular season" else None
+
+
 def _status(comp: dict[str, Any], event: dict[str, Any]) -> str:
     status_type = ((comp.get("status") or event.get("status") or {}).get("type") or {})
     name = (status_type.get("name") or "").upper()
