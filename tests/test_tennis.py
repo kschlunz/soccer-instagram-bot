@@ -29,6 +29,19 @@ def test_us_open_semis_kept_early_rounds_and_doubles_dropped():
     assert other[0].tv == "Tennis Channel"
 
 
+def test_early_rounds_kept_only_when_on_national_tv():
+    def comp(cid, network):
+        return {"id": cid, "date": "2026-09-03T15:00Z", "timeValid": True,
+                "status": {"type": {"name": "STATUS_SCHEDULED", "state": "pre"}},
+                "round": {"displayName": "2nd Round"},
+                "geoBroadcasts": [{"market": {"type": "National"}, "media": {"shortName": network}, "lang": "en", "region": "us"}] if network else [],
+                "competitors": [{"athlete": {"shortName": f"A. {cid}"}}, {"athlete": {"shortName": f"B. {cid}"}}]}
+    ev = {"shortName": "US Open", "groupings": [{"grouping": {"slug": "womens-singles"},
+          "competitions": [comp("tv", "ESPN2"), comp("plus", "ESPN+"), comp("none", None)]}]}
+    ms = tennis.events_to_matches([ev], date(2026, 9, 3), NY, BC)
+    assert [m.home for m in ms] == ["A. tv"] and ms[0].channel == "ESPN2"
+
+
 def test_semifinals_are_marquee_and_caption_reads_well():
     ms = tag_marquee(tennis.events_to_matches(EVENTS, date(2026, 9, 3), NY, BC))
     semis = [m for m in ms if m.stage == "Semifinals"]

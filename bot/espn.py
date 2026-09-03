@@ -59,6 +59,29 @@ NETWORK_NAMES = {
 # Spanish-language US networks sometimes come through tagged as English; drop them by prefix.
 SPANISH_PREFIXES = ("tele", "univ", "tudn", "vix", "fox deportes", "espn deportes", "galavis", "unimas", "unimás")
 
+# Linear/major networks that count as "on national TV". ESPN also tags conference streams
+# (ESPN+, SECN+, ACCNX, BTN+, school YouTube channels...) as national, which would list
+# every college game in the country; those are filtered out for national-TV-only leagues.
+MAJOR_NETWORKS = {
+    "ESPN", "ESPN2", "ESPNU", "ESPNEWS", "ABC",
+    "FOX", "FS1", "FS2",
+    "CBS", "CBS Sports Network",
+    "NBC", "Peacock", "USA Network",
+    "Big Ten Network", "BTN", "SEC Network", "ACC Network", "Big 12 Network",
+    "Prime Video", "TNT", "TBS", "truTV", "ION", "NBA TV", "Paramount+", "Disney+",
+}
+
+
+
+
+def major_networks_only(channel: str | None) -> str | None:
+    """Keep only major national networks from a ' / '-joined channel string."""
+    if not channel:
+        return None
+    kept = [c for c in (part.strip() for part in channel.split("/")) if c in MAJOR_NETWORKS]
+    return " / ".join(kept) if kept else None
+
+
 KICKOFF_TOLERANCE = timedelta(minutes=10)
 
 

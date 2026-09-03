@@ -15,23 +15,10 @@ from zoneinfo import ZoneInfo
 import requests
 
 from . import tennis
-from .espn import channels_for, fetch_events
+from .espn import MAJOR_NETWORKS, channels_for, fetch_events, major_networks_only  # noqa: F401 (re-exported)
 from .fixtures import Match, sort_matches
 
 log = logging.getLogger("soccer-bot.espn_fixtures")
-
-
-# Linear/major networks that count as "on national TV". ESPN also tags conference streams
-# (ESPN+, SECN+, ACCNX, BTN+, school YouTube channels...) as national, which would list
-# every college game in the country; those are filtered out for national_tv_only leagues.
-MAJOR_NETWORKS = {
-    "ESPN", "ESPN2", "ESPNU", "ESPNEWS", "ABC",
-    "FOX", "FS1", "FS2",
-    "CBS", "CBS Sports Network",
-    "NBC", "Peacock", "USA Network",
-    "Big Ten Network", "BTN", "SEC Network", "ACC Network", "Big 12 Network",
-    "Prime Video", "TNT", "TBS", "truTV", "ION", "NBA TV", "Paramount+", "Disney+",
-}
 
 
 @dataclass(frozen=True)
@@ -148,24 +135,6 @@ def events_to_matches(
         except (KeyError, IndexError, AttributeError, ValueError, TypeError) as err:
             log.warning("Skipping malformed ESPN event in %s: %s", league.name, err)
     return out
-
-
-def major_networks_only(channel: str | None) -> str | None:
-    """Keep only major national networks from a ' / '-joined channel string."""
-    if not channel:
-        return None
-    kept = [c for c in (part.strip() for part in channel.split("/")) if c in MAJOR_NETWORKS]
-    return " / ".join(kept) if kept else None
-
-
-def _headline(comp: dict[str, Any], event: dict[str, Any]) -> str | None:
-    """ESPN's note for the game, e.g. 'NWSL Playoffs - Semifinal', when present."""
-    for note in (comp.get("notes") or event.get("notes") or []):
-        text = (note.get("headline") or "").strip()
-        if text:
-            return text
-    season_type = ((event.get("season") or {}).get("slug") or "").replace("-", " ")
-    return season_type.title() if season_type and season_type != "regular season" else None
 
 
 def _status(comp: dict[str, Any], event: dict[str, Any]) -> str:
