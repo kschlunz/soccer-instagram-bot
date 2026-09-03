@@ -57,3 +57,12 @@ def test_channels_appear_in_caption_and_hide_redundant_competition_line():
 def test_league_map_covers_free_tier():
     for code in ["PL", "ELC", "PD", "BL1", "SA", "FL1", "DED", "PPL", "CL", "BSA", "CLI"]:
         assert code in espn.ESPN_LEAGUES
+
+
+def test_spanish_networks_are_dropped_even_when_tagged_english():
+    comp = {"geoBroadcasts": [
+        {"market": {"type": "National"}, "media": {"shortName": "USA Net"}, "lang": "en", "region": "us"},
+        {"market": {"type": "National"}, "media": {"shortName": "Tele"}, "lang": "en", "region": "us"},
+        {"market": {"type": "National"}, "media": {"shortName": "Universo"}, "lang": "en", "region": "us"},
+    ]}
+    assert espn.channels_for(comp) == "USA Network"

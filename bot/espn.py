@@ -54,6 +54,9 @@ NETWORK_NAMES = {
     "ViX": None,
 }
 
+# Spanish-language US networks sometimes come through tagged as English; drop them by prefix.
+SPANISH_PREFIXES = ("tele", "univ", "tudn", "vix", "fox deportes", "espn deportes", "galavis", "unimas", "unimás")
+
 KICKOFF_TOLERANCE = timedelta(minutes=10)
 
 
@@ -162,7 +165,7 @@ def _channels(comp: dict[str, Any]) -> str | None:
                 names.extend(n.strip() for n in b.get("names") or [])
     cleaned: list[str] = []
     for n in names:
-        if not n:
+        if not n or n.lower().startswith(SPANISH_PREFIXES):
             continue
         mapped = NETWORK_NAMES.get(n, n)
         if mapped and mapped not in cleaned:
