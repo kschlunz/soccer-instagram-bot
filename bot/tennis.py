@@ -8,6 +8,7 @@ week from flooding the post, only the later rounds are shown (see MIN_ROUND).
 from __future__ import annotations
 
 import logging
+import re
 from datetime import date, datetime, timezone
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo
@@ -179,6 +180,10 @@ def _importance(round_name: str | None) -> int | None:
     exact = ROUND_ORDER.get(low.strip())
     if exact is not None:
         return exact
+    # ESPN also labels rounds "Round 1".."Round 4"; in a 128 draw, round 4 is the round of 16.
+    numbered = re.search(r"\bround\s+(\d+)\b", low)
+    if numbered:
+        return 1 if int(numbered.group(1)) >= 4 else 0
     for key, value in sorted(ROUND_ORDER.items(), key=lambda kv: -len(kv[0])):
         if key in low:
             return value

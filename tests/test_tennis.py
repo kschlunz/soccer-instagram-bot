@@ -64,3 +64,11 @@ def test_singles_detected_structurally_and_channel_read():
         "id": "x2", "date": "2026-09-03T23:00Z", "round": {"displayName": "Final"},
         "competitors": [{"roster": [{}, {}]}, {"roster": [{}, {}]}]}]}]}
     assert tennis.events_to_matches([doubles], date(2026, 9, 3), NY, BC) == []
+
+
+def test_numbered_rounds():
+    assert tennis._importance("Round 2") == 0
+    assert tennis._importance("Round 4") == 1
+    assert tennis._importance("Round of 16") == 1
+    assert tennis._importance("Quarterfinals") == 2
+    assert tennis._importance("Something else") is None
