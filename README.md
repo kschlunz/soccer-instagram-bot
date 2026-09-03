@@ -165,13 +165,18 @@ Optional variables: `IG_HANDLE_WOMENS`, `HASHTAGS_WOMENS`, and `COMPETITIONS_WOM
 | `UWCL` | Women's Champions League | |
 | `WWC` / `WEURO` | Women's World Cup / Euro | tournament years only |
 | `WINTL` | Women's internationals | USWNT friendlies |
-| `LIGAF` / `FBL` | Liga F / Frauen-Bundesliga | ESPN coverage is patchy |
+| `LIGAF` | Liga F | ESPN coverage is patchy |
 | `WNBA` | WNBA | |
 | `NCAAWBB` | Women's college basketball | nationally televised games only |
 | `NCAAWVB` | Women's college volleyball | nationally televised games only |
 | `NCAAWSB` | College softball | nationally televised games only |
 | `NCAAWH` / `NCAAWLAX` | Women's college hockey / lacrosse | nationally televised games only |
-| `PWHL` | PWHL | |
+
+"Nationally televised" means a major network such as ESPN, ESPN2, ABC, FOX, FS1, CBS,
+NBC, Peacock, Big Ten Network or SEC Network (the list is `MAJOR_NETWORKS` in
+`bot/espn_fixtures.py`). Conference streams like ESPN+, SECN+ and ACCNX do not count,
+otherwise every college game in the country would be listed. The Frauen-Bundesliga and
+PWHL are not on ESPN's feed.
 
 football-data.org has no women's competitions, so this profile depends entirely on ESPN's
 undocumented feed. If ESPN changes something the run fails loudly (red X in Actions) rather

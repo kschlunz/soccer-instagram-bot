@@ -37,17 +37,25 @@ def test_nwsl_late_utc_kickoff_lands_on_local_day_and_reads_home_vs_away():
 
 def test_college_filters_to_national_tv_and_shows_ranks_and_final_scores():
     ncaa = ef.League("NCAAWVB", "volleyball", "womens-college-volleyball", "Volleyball", national_tv_only=True)
-    ms = ef.events_to_matches(EVENTS[2:4], ncaa, DAY, NY, tv=None)
-    assert len(ms) == 1  # Iowa at Nebraska has no national broadcast -> dropped
+    ms = ef.events_to_matches(EVENTS[2:5], ncaa, DAY, NY, tv=None)
+    assert len(ms) == 1  # no broadcast -> dropped; ESPN+ only -> dropped; ESPN2 -> kept
     m = ms[0]
     assert m.home == "#5 Stanford" and m.away == "#1 Texas"
     assert m.status == "FINISHED" and m.time_label() == "FT"
     assert m.display_pair() == ("#1 Texas", "1-3", "#5 Stanford")
 
 
+def test_major_networks_only():
+    assert ef.major_networks_only("ESPN+") is None
+    assert ef.major_networks_only("SECN+") is None
+    assert ef.major_networks_only("FS1") == "FS1"
+    assert ef.major_networks_only("ESPN+ / ESPN2") == "ESPN2"
+    assert ef.major_networks_only(None) is None
+
+
 def test_tbd_and_previous_day_handling():
     wsl = ef.League("WSL", "soccer", "eng.w.1", "WSL")
-    ms = ef.events_to_matches(EVENTS[4:6], wsl, DAY, NY, tv=None)
+    ms = ef.events_to_matches(EVENTS[5:7], wsl, DAY, NY, tv=None)
     assert [m.status for m in ms] == ["SCHEDULED"]
     assert ms[0].time_label() == "TBD"
 

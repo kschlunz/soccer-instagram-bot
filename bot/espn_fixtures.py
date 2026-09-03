@@ -20,13 +20,26 @@ from .fixtures import Match, sort_matches
 log = logging.getLogger("soccer-bot.espn_fixtures")
 
 
+# Linear/major networks that count as "on national TV". ESPN also tags conference streams
+# (ESPN+, SECN+, ACCNX, BTN+, school YouTube channels...) as national, which would list
+# every college game in the country; those are filtered out for national_tv_only leagues.
+MAJOR_NETWORKS = {
+    "ESPN", "ESPN2", "ESPNU", "ESPNEWS", "ABC",
+    "FOX", "FS1", "FS2",
+    "CBS", "CBS Sports Network",
+    "NBC", "Peacock", "USA Network",
+    "Big Ten Network", "BTN", "SEC Network", "ACC Network", "Big 12 Network",
+    "Prime Video", "TNT", "TBS", "truTV", "ION", "NBA TV", "Paramount+", "Disney+",
+}
+
+
 @dataclass(frozen=True)
 class League:
     code: str
     sport: str
     slug: str
     name: str
-    national_tv_only: bool = False  # college sports: only list games with a national broadcast
+    national_tv_only: bool = False  # college sports: only list games on a major national network
     params: dict[str, str] = field(default_factory=dict)
 
 
@@ -38,7 +51,6 @@ WOMENS_LEAGUES: list[League] = [
     League("WEURO", "soccer", "uefa.weuro", "Women's Euro"),
     League("WINTL", "soccer", "fifa.friendly.w", "Women's Internationals"),
     League("LIGAF", "soccer", "esp.w.1", "Liga F"),
-    League("FBL", "soccer", "ger.w.1", "Frauen-Bundesliga"),
     League("WNBA", "basketball", "wnba", "WNBA"),
     League("NCAAWBB", "basketball", "womens-college-basketball", "Women's College Basketball",
            national_tv_only=True, params={"groups": "50"}),
@@ -48,7 +60,7 @@ WOMENS_LEAGUES: list[League] = [
     League("NCAAWH", "hockey", "womens-college-hockey", "Women's College Hockey", national_tv_only=True),
     League("NCAAWLAX", "lacrosse", "womens-college-lacrosse", "Women's College Lacrosse",
            national_tv_only=True),
-    League("PWHL", "hockey", "pwhl", "PWHL"),
+    # Not on ESPN's feed (400 Bad Request): Frauen-Bundesliga (ger.w.1), PWHL (pwhl).
 ]
 
 
@@ -98,8 +110,10 @@ def events_to_matches(
                 continue
 
             channel = channels_for(comp)
-            if league.national_tv_only and not channel:
-                continue
+            if league.national_tv_only:
+                channel = major_networks_only(channel)
+                if not channel:
+                    continue
 
             status = _status(comp, event)
             finished = status == "FINISHED"
@@ -121,6 +135,14 @@ def events_to_matches(
         except (KeyError, IndexError, AttributeError, ValueError, TypeError) as err:
             log.warning("Skipping malformed ESPN event in %s: %s", league.name, err)
     return out
+
+
+def major_networks_only(channel: str | None) -> str | None:
+    """Keep only major national networks from a ' / '-joined channel string."""
+    if not channel:
+        return None
+    kept = [c for c in (part.strip() for part in channel.split("/")) if c in MAJOR_NETWORKS]
+    return " / ".join(kept) if kept else None
 
 
 def _status(comp: dict[str, Any], event: dict[str, Any]) -> str:
