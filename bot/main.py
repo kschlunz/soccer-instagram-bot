@@ -58,7 +58,8 @@ def run(argv: list[str] | None = None) -> int:
 
     out_dir = Path(args.out)
     paths = render_all(matches, day, tz_label, out_dir, handle=args.handle, twelve_hour=cfg.twelve_hour,
-                       title=cfg.settings["title"])
+                       title=cfg.settings["title"], theme=cfg.settings.get("theme", "green"),
+                       tagline=cfg.settings.get("tagline") or None)
     caption = build_caption(matches, day, tz_label, cfg.hashtags, twelve_hour=cfg.twelve_hour,
                             title=cfg.settings["caption_title"])
     (out_dir / f"{day.isoformat()}-caption.txt").write_text(caption, encoding="utf-8")

@@ -12,6 +12,8 @@ PROFILES: dict[str, dict[str, str]] = {
         "images_subdir": "posts",
         "hashtags": "#soccer #football #matchday #fixtures #futbol",
         "broadcasters_file": "us_broadcasters.json",
+        "theme": "green",
+        "tagline": "",
     },
     "womens": {
         "title": "TODAY IN WOMEN'S SPORTS",
@@ -19,6 +21,8 @@ PROFILES: dict[str, dict[str, str]] = {
         "images_subdir": "posts-womens",
         "hashtags": "#womenssports #nwsl #wnba #womenssoccer #watchwomenssports",
         "broadcasters_file": "us_broadcasters_womens.json",
+        "theme": "purple",
+        "tagline": "What's on, when it's on",
     },
 }
 

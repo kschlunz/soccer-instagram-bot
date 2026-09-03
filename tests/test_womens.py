@@ -87,8 +87,14 @@ def test_womens_profile_config_and_render(monkeypatch, tmp_path):
     wnba = ef.League("WNBA", "basketball", "wnba", "WNBA")
     nwsl = ef.League("NWSL", "soccer", "usa.nwsl", "NWSL")
     ms = sort_matches(ef.events_to_matches(EVENTS[:1], wnba, DAY, NY, "ESPN") + ef.events_to_matches(EVENTS[1:2], nwsl, DAY, NY, "CBS"))
-    paths = render_all(ms, DAY, "ET", tmp_path, title=cfg.settings["title"])
+    assert cfg.settings["theme"] == "purple"
+    paths = render_all(ms, DAY, "ET", tmp_path, title=cfg.settings["title"], theme=cfg.settings["theme"],
+                       tagline=cfg.settings["tagline"])
     assert len(paths) == 1
+    from PIL import Image
+    with Image.open(paths[0]) as img:
+        r, g, b = img.getpixel((5, 5))  # near-black background (JPEG shifts values slightly), not the soccer navy
+        assert max(r, g, b) < 24 and b < 30
     caption = build_caption(ms, DAY, "ET", cfg.hashtags, title=cfg.settings["caption_title"])
     assert caption.startswith("🏟️ Today in women's sports — Saturday, 5 September 2026")
     assert "7:00 PM  Aces at Liberty · ABC" in caption
