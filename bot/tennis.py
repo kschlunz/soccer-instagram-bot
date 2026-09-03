@@ -12,6 +12,7 @@ from datetime import date, datetime, timezone
 from typing import Any, Iterable
 from zoneinfo import ZoneInfo
 
+from .espn import channels_for
 from .fixtures import Match
 
 log = logging.getLogger("soccer-bot.tennis")
@@ -46,9 +47,16 @@ def events_to_matches(
     if events:
         first = events[0]
         comps = list(_competitions(first))
-        log.info("ESPN tennis: %d tournament(s); first=%r keys=%s; %d draw entries; sample match keys=%s",
-                 len(events), first.get("shortName") or first.get("name"), sorted(first.keys())[:12],
-                 len(comps), sorted(comps[0][0].keys())[:14] if comps else None)
+        draws = {draw: sum(1 for _, d in comps if d == draw) for _, draw in comps}
+        log.info("ESPN tennis: %d tournament(s); first=%r; draws=%s",
+                 len(events), first.get("shortName") or first.get("name"), draws)
+        if comps:
+            c = comps[0][0]
+            comp0 = (c.get("competitors") or [{}])[0]
+            log.info("ESPN tennis sample: round=%r status=%r timeValid=%r date=%r competitor keys=%s athlete=%s",
+                     c.get("round"), (c.get("status") or {}).get("type", {}).get("name"), c.get("timeValid"),
+                     c.get("date"), sorted(comp0.keys())[:12],
+                     {k: v for k, v in (comp0.get("athlete") or {}).items() if k in ("displayName", "shortName")})
     for event in events:
         tournament = (event.get("shortName") or event.get("name") or "WTA").strip()
         is_slam = any(s in tournament.lower() for s in GRAND_SLAMS)
@@ -61,7 +69,7 @@ def events_to_matches(
             if key in seen:
                 continue
             seen.add(key)
-            if not _is_singles(draw):
+            if not _is_singles(draw, comp):
                 continue
             try:
                 m = _match(comp, competition_name, code, day, tz, tv, min_round)
@@ -78,8 +86,8 @@ def _competitions(event: dict[str, Any]):
     groupings = event.get("groupings")
     if groupings:
         for g in groupings:
-            info = g.get("grouping") or {}
-            draw = (info.get("slug") or info.get("displayName") or "").lower()
+            info = g.get("grouping") or g
+            draw = (info.get("slug") or info.get("displayName") or info.get("name") or "").lower()
             for comp in g.get("competitions") or []:
                 yield comp, draw
     else:
@@ -88,8 +96,14 @@ def _competitions(event: dict[str, Any]):
             yield comp, draw
 
 
-def _is_singles(draw: str) -> bool:
-    return any(s in draw for s in SINGLES_SLUGS) and "doubles" not in draw and "mixed" not in draw
+def _is_singles(draw: str, comp: dict[str, Any] | None = None) -> bool:
+    if "doubles" in draw or "mixed" in draw:
+        return False
+    if any(s in draw for s in SINGLES_SLUGS):
+        return True
+    # No usable draw label: singles if both competitors are individual athletes.
+    competitors = (comp or {}).get("competitors") or []
+    return len(competitors) == 2 and all(c.get("athlete") and not c.get("roster") for c in competitors)
 
 
 def _match(comp, competition_name, code, day, tz, tv, min_round) -> Match | None:
@@ -104,7 +118,7 @@ def _match(comp, competition_name, code, day, tz, tv, min_round) -> Match | None
         return None
 
     round_name = _round_name(comp)
-    importance = ROUND_ORDER.get(round_name.lower().strip()) if round_name else None
+    importance = _importance(round_name)
     if importance is None or importance < min_round:
         return None
 
@@ -125,9 +139,22 @@ def _match(comp, competition_name, code, day, tz, tv, min_round) -> Match | None
         away_score=_sets_won(b) if finished else None,
         stage=round_name,
         tv=tv,
-        channel=None,
+        channel=channels_for(comp),
         sport="tennis",
     )
+
+
+def _importance(round_name: str | None) -> int | None:
+    if not round_name:
+        return None
+    low = round_name.lower()
+    exact = ROUND_ORDER.get(low.strip())
+    if exact is not None:
+        return exact
+    for key, value in sorted(ROUND_ORDER.items(), key=lambda kv: -len(kv[0])):
+        if key in low:
+            return value
+    return None
 
 
 def _round_name(comp: dict[str, Any]) -> str | None:

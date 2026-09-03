@@ -36,3 +36,18 @@ def test_semifinals_are_marquee_and_caption_reads_well():
     caption = build_caption(ms, date(2026, 9, 3), "ET", "", True, "🏟️ Today in women's sports")
     assert "🏆 US Open · Women's Singles" in caption
     assert "⭐ 7:00 PM  (1) A. Sabalenka vs (3) C. Gauff" in caption
+
+
+def test_singles_detected_structurally_and_channel_read():
+    ev = {"shortName": "US Open", "groupings": [{"competitions": [{
+        "id": "x1", "date": "2026-09-03T23:00Z", "timeValid": True,
+        "status": {"type": {"name": "STATUS_SCHEDULED", "state": "pre"}},
+        "round": {"displayName": "Women's Singles - Semifinal 1"},
+        "geoBroadcasts": [{"market": {"type": "National"}, "media": {"shortName": "ESPN"}, "lang": "en", "region": "us"}],
+        "competitors": [{"athlete": {"shortName": "A. One"}}, {"athlete": {"shortName": "B. Two"}}]}]}]}
+    ms = tennis.events_to_matches([ev], date(2026, 9, 3), NY, BC)
+    assert len(ms) == 1 and ms[0].channel == "ESPN" and ms[0].stage.endswith("Semifinal 1")
+    doubles = {"shortName": "US Open", "groupings": [{"competitions": [{
+        "id": "x2", "date": "2026-09-03T23:00Z", "round": {"displayName": "Final"},
+        "competitors": [{"roster": [{}, {}]}, {"roster": [{}, {}]}]}]}]}
+    assert tennis.events_to_matches([doubles], date(2026, 9, 3), NY, BC) == []
