@@ -70,6 +70,7 @@ class Config:
     espn_enrich: bool = True
     post_stories: bool = True
     story_max: int = 3
+    featured_min_games: int = 4  # only add a "Game of the day" slide on days with at least this many games
 
     @property
     def tz(self) -> ZoneInfo:
@@ -109,6 +110,7 @@ class Config:
             espn_enrich=_bool(os.environ.get("ESPN_ENRICH"), True),
             post_stories=_bool(os.environ.get("POST_STORIES"), True),
             story_max=int(os.environ.get("STORY_MAX") or 3),
+            featured_min_games=int(os.environ.get("FEATURED_MIN_GAMES") or 4),
         )
         if require_secrets:
             required = [("IG_USER_ID", cfg.ig_user_id), ("IG_ACCESS_TOKEN", cfg.ig_access_token)]

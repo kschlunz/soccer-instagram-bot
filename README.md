@@ -108,6 +108,7 @@ Optional **Variables**:
 | `ESPN_ENRICH` | `true` | Look up per-match US channels from ESPN |
 | `POST_STORIES` | `true` | Also publish the first slides to Stories |
 | `STORY_MAX` | `3` | How many slides go to Stories |
+| `FEATURED_MIN_GAMES` | `4` | Minimum games on the day before a "Game of the day" slide is added |
 | `HASHTAGS` | `#soccer #football ...` | Caption footer |
 | `IG_HANDLE` | none | Handle printed in the image footer, e.g. `@dailykickoffs` |
 
@@ -222,10 +223,11 @@ exchange with the app secret.
   slide per day and a "📅" section per day in the caption. Run it by hand with a `date`
   to preview any weekend.
 - **Marquee games.** Rivalries (`bot/data/rivalries.json`), knockout rounds and finals,
-  and ranked college matchups (both ranked, or a top-5 team) are flagged. Up to three
-  lead the carousel on a big-type "Game of the day" slide, get a ⭐ in the caption and
-  a ★ on their schedule row. Add a rivalry as `[team A, team B, label]` under the
-  competition code.
+  and ranked college matchups (both teams ranked) are flagged with a ★ on their schedule
+  row. On days with at least `FEATURED_MIN_GAMES` games (default 4), up to three of them
+  lead the carousel on a big-type "Game of the day" slide (headed "Marquee matchups" in
+  the weekend preview) and get a ⭐ section at the top of the caption. Add a rivalry as
+  `[team A, team B, label]` under the competition code.
 
 ### 8. Schedule
 

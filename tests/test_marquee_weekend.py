@@ -37,7 +37,7 @@ def test_rivalries_rankings_and_knockouts_are_marquee():
 
     riv = {}
     assert reason_for(_m(home="#3 Nebraska", away="#12 Iowa", competition_code="NCAAWVB"), riv) == "Ranked matchup: #3 vs #12"
-    assert reason_for(_m(home="#2 Texas", away="Rice", competition_code="NCAAWVB"), riv) == "Top-5 team in action"
+    assert reason_for(_m(home="#2 Texas", away="Rice", competition_code="NCAAWVB"), riv) is None  # one ranked side is not enough
     assert reason_for(_m(home="#20 Baylor", away="Rice", competition_code="NCAAWVB"), riv) is None
     assert reason_for(_m(stage="SEMI_FINALS", competition_code="CL"), riv) == "Semifinal"
     assert reason_for(_m(stage="NWSL Playoffs - Semifinal", competition_code="NWSL"), riv) == "NWSL Playoffs - Semifinal"
@@ -108,3 +108,21 @@ def test_weekend_days():
     assert weekend_days(date(2026, 9, 4)) == [date(2026, 9, 5), date(2026, 9, 6)]   # Friday
     assert weekend_days(date(2026, 9, 5)) == [date(2026, 9, 5), date(2026, 9, 6)]   # Saturday
     assert weekend_days(date(2026, 9, 6)) == [date(2026, 9, 6)]                      # Sunday
+
+
+def test_featured_slide_needs_enough_games(monkeypatch, tmp_path):
+    """With fewer than FEATURED_MIN_GAMES games the run renders no featured slide."""
+    from bot import main as bot_main
+
+    monkeypatch.setenv("PROFILE", "soccer")
+    monkeypatch.setenv("TIMEZONE", "UTC")
+    few = [_m(home="Real Madrid", away="Barcelona", competition_code="PD", competition="La Liga")]
+    many = few + [_m(home=f"H{i}", away=f"A{i}") for i in range(3)]
+
+    monkeypatch.setattr(bot_main, "fetch_day", lambda cfg, day, bc, sample: tag_marquee(few))
+    assert bot_main.run(["--dry-run", "--date", "2026-09-05", "--out", str(tmp_path / "few")]) == 0
+    assert sorted(p.name for p in (tmp_path / "few").glob("*.jpg")) == ["2026-09-05-1-story.jpg", "2026-09-05-1.jpg"]
+
+    monkeypatch.setattr(bot_main, "fetch_day", lambda cfg, day, bc, sample: tag_marquee(many))
+    assert bot_main.run(["--dry-run", "--date", "2026-09-05", "--out", str(tmp_path / "many")]) == 0
+    assert "2026-09-05-2.jpg" in {p.name for p in (tmp_path / "many").glob("*.jpg")}  # featured + schedule

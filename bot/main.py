@@ -78,7 +78,8 @@ def run(argv: list[str] | None = None) -> int:
         log.info("Nothing scheduled and POST_WHEN_EMPTY is off; nothing to post.")
         return 0
 
-    stars = featured([m for _, ms in day_matches for m in ms])
+    # A one- or two-game day does not need a "Game of the day" slide.
+    stars = featured([m for _, ms in day_matches for m in ms]) if total >= cfg.featured_min_games else []
     if stars:
         log.info("Marquee: %s", "; ".join(f"{m.home} v {m.away} ({m.marquee})" for m in stars))
 

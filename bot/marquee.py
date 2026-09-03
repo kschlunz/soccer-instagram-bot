@@ -64,12 +64,10 @@ def reason_for(match: Match, rivalries: dict[str, list[list[str]]]) -> str | Non
         ):
             return label
 
-    # 3. Ranked matchup (college): both ranked, or one side top 5
+    # 3. Ranked matchup (college): both teams ranked
     rh, ra = _rank(match.home), _rank(match.away)
     if rh and ra:
         return f"Ranked matchup: #{min(rh, ra)} vs #{max(rh, ra)}"
-    if (rh and rh <= 5) or (ra and ra <= 5):
-        return f"Top-5 team in action"
     return None
 
 
