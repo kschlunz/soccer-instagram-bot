@@ -20,23 +20,39 @@ ROW_H = 66
 ROW_H_WITH_CHANNEL = 92  # two lines: teams, then the exact US channel underneath
 MAX_PAGES = 10  # Instagram carousel limit
 
+def _hex(code: str) -> tuple[int, int, int]:
+    code = code.lstrip("#")
+    return int(code[0:2], 16), int(code[2:4], 16), int(code[4:6], 16)
+
+
 @dataclass(frozen=True)
 class Theme:
     bg: tuple[int, int, int]
-    stripe: tuple[int, int, int]
-    accent: tuple[int, int, int]
-    text: tuple[int, int, int]
-    muted: tuple[int, int, int]
-    time_bg: tuple[int, int, int]
+    stripe: tuple[int, int, int]      # alternating row background
+    accent: tuple[int, int, int]      # brand colour: title bar, section headers, tagline
+    text: tuple[int, int, int]        # team names
+    muted: tuple[int, int, int]       # date, "vs", footer, competition TV line
+    time_bg: tuple[int, int, int]     # kickoff chip background
+    time_text: tuple[int, int, int]   # kickoff chip text
+    rule: tuple[int, int, int]        # section divider line
+    highlight: tuple[int, int, int]   # per-match channel line
+    live_bg: tuple[int, int, int]     # kickoff chip background while a game is in progress
 
 
 THEMES = {
     # Soccer: deep navy with pitch green
-    "green": Theme(bg=(11, 29, 42), stripe=(14, 38, 54), accent=(34, 197, 94),
-                   text=(245, 247, 250), muted=(150, 165, 180), time_bg=(18, 52, 72)),
-    # Women's sports: matches the W GAMEDAY logo (black + violet)
-    "purple": Theme(bg=(8, 8, 12), stripe=(20, 16, 32), accent=(139, 92, 246),
-                    text=(248, 247, 252), muted=(172, 160, 205), time_bg=(34, 24, 60)),
+    "green": Theme(
+        bg=(11, 29, 42), stripe=(14, 38, 54), accent=(34, 197, 94), text=(245, 247, 250),
+        muted=(150, 165, 180), time_bg=(18, 52, 72), time_text=(34, 197, 94),
+        rule=(34, 197, 94), highlight=(150, 165, 180), live_bg=(18, 52, 72),
+    ),
+    # W GAMEDAY brand: #8048B8 purple, #7038A0 darker states, #9858D0 highlights only,
+    # near-black background, white primary text.
+    "purple": Theme(
+        bg=(8, 8, 12), stripe=(18, 14, 26), accent=_hex("#8048B8"), text=(255, 255, 255),
+        muted=(178, 170, 196), time_bg=_hex("#7038A0"), time_text=(255, 255, 255),
+        rule=_hex("#7038A0"), highlight=_hex("#9858D0"), live_bg=_hex("#9858D0"),
+    ),
 }
 DEFAULT_THEME = THEMES["green"]
 
@@ -214,7 +230,7 @@ def render_page(
                 name_max_w -= int(tv_w) + 24
             name = _ellipsize(draw, line.text.upper(), section_font, name_max_w)
             draw.text((MARGIN, y + 6), name, font=section_font, fill=th.accent)
-            draw.line([MARGIN, y + SECTION_HEADER_H - 22, WIDTH - MARGIN, y + SECTION_HEADER_H - 22], fill=th.accent, width=2)
+            draw.line([MARGIN, y + SECTION_HEADER_H - 22, WIDTH - MARGIN, y + SECTION_HEADER_H - 22], fill=th.rule, width=2)
             y += SECTION_HEADER_H - 18
             stripe = False
         elif line.kind == "match":
@@ -227,9 +243,10 @@ def render_page(
             # Time pill (kept at the standard height, vertically aligned with the team line)
             label = m.time_label(twelve_hour)
             pill_top, pill_bottom = y + 12, y + ROW_H - 12
-            draw.rounded_rectangle([MARGIN, pill_top, MARGIN + time_col_w, pill_bottom], radius=10, fill=th.time_bg)
+            draw.rounded_rectangle([MARGIN, pill_top, MARGIN + time_col_w, pill_bottom], radius=10,
+                                   fill=th.live_bg if label == "LIVE" else th.time_bg)
             tw = draw.textlength(label, font=time_font)
-            draw.text((MARGIN + (time_col_w - tw) / 2, pill_top + 6), label, font=time_font, fill=th.accent if label != "TBD" else th.muted)
+            draw.text((MARGIN + (time_col_w - tw) / 2, pill_top + 6), label, font=time_font, fill=th.time_text)
             # Teams: "Home vs Away" for soccer, "Away at Home" for US sports
             left_name, vs, right_name = m.display_pair()
             vs_w = draw.textlength(f"  {vs}  ", font=vs_font)
@@ -244,7 +261,7 @@ def render_page(
             if m.channel:
                 ch = _ellipsize(draw, m.channel, channel_font, text_w)
                 cw = draw.textlength(ch, font=channel_font)
-                draw.text((text_x + (text_w - cw) / 2, y + ROW_H - 10), ch, font=channel_font, fill=th.muted)
+                draw.text((text_x + (text_w - cw) / 2, y + ROW_H - 10), ch, font=channel_font, fill=th.highlight)
             y += row_h
         elif line.kind == "more":
             y += 18
