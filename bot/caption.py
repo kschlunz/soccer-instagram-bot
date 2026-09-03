@@ -93,6 +93,19 @@ def build_weekend_caption(
     return _finish(lines, hashtags)
 
 
+def build_spotlight_caption(m: Match, tz_label: str, hashtags: str = "", twelve_hour: bool = True) -> str:
+    left, mid, right = m.display_pair()
+    stage = m.marquee or m.stage or ""
+    lines = [f"🏆 {m.competition} — {stage}".rstrip(" —"), f"{left} {mid} {right}"]
+    when = m.time_label(twelve_hour)
+    if m.status == "TIMED":
+        when = f"{m.kickoff.strftime('%A, %d %B').replace(' 0', ' ')} · {when} {tz_label}"
+    lines.append(f"🕒 {when}")
+    if m.channel or m.tv:
+        lines.append(f"📺 {m.channel or m.tv}")
+    return _finish(lines, hashtags)
+
+
 def _finish(lines: list[str], hashtags: str) -> str:
     body = "\n".join(lines).rstrip()
     footer = f"\n\n{hashtags.strip()}" if hashtags.strip() else ""

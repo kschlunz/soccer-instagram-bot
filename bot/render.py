@@ -374,6 +374,65 @@ def render_featured(
     return img
 
 
+def render_spotlight(
+    m: Match,
+    day: date,
+    tz_label: str,
+    out_dir: Path,
+    stamp: str,
+    heading: str,
+    handle: str | None = None,
+    twelve_hour: bool = True,
+    theme: str = "green",
+    tagline: str | None = None,
+) -> list[Path]:
+    """One big slide for a single game: competition, the two sides, the round, time and channel."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    th = THEMES.get(theme, DEFAULT_THEME)
+    img = Image.new("RGB", (WIDTH, HEIGHT), th.bg)
+    draw = ImageDraw.Draw(img)
+    _draw_header(draw, day, 1, 1, heading, th, tagline)
+
+    max_w = WIDTH - 2 * MARGIN
+    left, mid, right = m.display_pair()
+    comp_font = _font(True, 34)
+    name_font = _fit_font(draw, max(left, right, key=len), True, 104, max_w, 48)
+    vs_font = _font(False, 44)
+    stage_font = _font(True, 34)
+    when_font = _font(True, 40)
+    tv_font = _font(False, 36)
+
+    stage = (m.marquee or m.stage or "").upper()
+    when = m.time_label(twelve_hour)
+    if m.status == "TIMED":
+        when = f"{m.kickoff.strftime('%A')} \u00b7 {when} {tz_label}"
+    where = m.channel or m.tv
+
+    blocks = [
+        (m.competition.upper(), comp_font, th.accent, 24),
+        (left, name_font, th.text, 8),
+        (mid, vs_font, th.muted, 8),
+        (right, name_font, th.text, 40),
+        (stage, stage_font, th.highlight, 36),
+        (when, when_font, th.text, 16),
+    ]
+    if where:
+        blocks.append((f"TV: {where}", tv_font, th.muted, 0))
+    total_h = sum(f.size + gap for _, f, _, gap in blocks)
+    y = HEADER_HEIGHT + (HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - total_h) / 2
+    for text, font, colour, gap in blocks:
+        text = _ellipsize(draw, text, font, max_w)
+        draw.text(((WIDTH - draw.textlength(text, font=font)) / 2, y), text, font=font, fill=colour)
+        y += font.size + gap
+    # accent rules above and below the names block for a poster feel
+    draw.line([MARGIN, HEADER_HEIGHT + 10, WIDTH - MARGIN, HEADER_HEIGHT + 10], fill=th.rule, width=3)
+    _draw_footer(draw, tz_label, handle, th)
+
+    path = out_dir / f"{stamp}-1.jpg"
+    img.save(path, "JPEG", quality=92, optimize=True)
+    return [path]
+
+
 def render_days(
     day_matches: Sequence[tuple[date, Sequence[Match]]],
     tz_label: str,

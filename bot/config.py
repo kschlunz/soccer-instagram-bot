@@ -71,6 +71,7 @@ class Config:
     post_stories: bool = True
     story_max: int = 3
     featured_min_games: int = 4  # only add a "Game of the day" slide on days with at least this many games
+    spotlight_level: str = "final"  # dedicated post for: final | semifinal | any (marquee game)
 
     @property
     def tz(self) -> ZoneInfo:
@@ -111,6 +112,7 @@ class Config:
             post_stories=_bool(os.environ.get("POST_STORIES"), True),
             story_max=int(os.environ.get("STORY_MAX") or 3),
             featured_min_games=int(os.environ.get("FEATURED_MIN_GAMES") or 4),
+            spotlight_level=(os.environ.get("SPOTLIGHT_LEVEL") or "final").strip().lower(),
         )
         if require_secrets:
             required = [("IG_USER_ID", cfg.ig_user_id), ("IG_ACCESS_TOKEN", cfg.ig_access_token)]

@@ -41,6 +41,8 @@ soccer-instagram-bot/
   .github/workflows/daily-post.yml         daily soccer post (11:00 UTC)
   .github/workflows/daily-post-womens.yml  daily women's sports post (11:30 UTC)
   .github/workflows/weekend-preview.yml    Friday weekend preview, both accounts (21:00 UTC)
+  .github/workflows/spotlight.yml          daily check for a final; dedicated post if there is one (13:00 UTC)
+  bot/spotlight.py   picks the game for the spotlight post
   .github/workflows/refresh-token.yml   token refresh / reminder
 ```
 
@@ -110,6 +112,7 @@ Optional **Variables**:
 | `POST_STORIES` | `true` | Also publish the first slides to Stories |
 | `STORY_MAX` | `3` | How many slides go to Stories |
 | `FEATURED_MIN_GAMES` | `4` | Minimum games on the day before a "Game of the day" slide is added |
+| `SPOTLIGHT_LEVEL` | `final` | Dedicated post for `final`, `semifinal`, or `any` marquee game |
 | `HASHTAGS` | `#soccer #football ...` | Caption footer |
 | `IG_HANDLE` | none | Handle printed in the image footer, e.g. `@dailykickoffs` |
 
@@ -231,7 +234,16 @@ exchange with the app secret.
   the weekend preview) and get a ⭐ section at the top of the caption. Add a rivalry as
   `[team A, team B, label]` under the competition code.
 
-### 8. Schedule
+### 8. Spotlight post for finals
+
+`.github/workflows/spotlight.yml` runs every morning at 9 AM Eastern for both accounts. If a
+final is being played that day (a Grand Slam final, a cup final, a league championship game,
+the WNBA Finals...), it posts one dedicated poster-style slide plus a Story: competition, the
+two sides, the round, kickoff time and channel. On any other day it exits without posting.
+The `SPOTLIGHT_LEVEL` variable widens it: `semifinal` also posts for semifinals, `any` posts
+for the biggest marquee game every day.
+
+### 9. Schedule
 
 `.github/workflows/daily-post.yml` runs at 11:00 UTC daily. Change the cron line to move
 it. You can also run it by hand from the Actions tab: **Daily matchday post > Run

@@ -8,7 +8,7 @@ import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from .caption import build_caption, build_weekend_caption
+from .caption import build_caption, build_spotlight_caption, build_weekend_caption
 from .config import Config
 from .espn import enrich
 from .espn_fixtures import WOMENS_LEAGUES, build_matches
@@ -16,7 +16,8 @@ from .fixtures import BROADCASTERS_FILE, Match, fetch_matches, load_broadcasters
 from .hosting import publish_images, wait_until_public
 from .instagram import InstagramClient, InstagramError
 from .marquee import featured, tag_marquee
-from .render import make_story_images, render_days
+from .render import make_story_images, render_days, render_spotlight
+from .spotlight import heading as spotlight_heading, pick as pick_spotlight
 
 log = logging.getLogger("soccer-bot")
 
@@ -24,8 +25,9 @@ log = logging.getLogger("soccer-bot")
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Post today's fixtures to Instagram.")
     parser.add_argument("--date", help="Day to post, YYYY-MM-DD (default: today in TIMEZONE)")
-    parser.add_argument("--mode", choices=["daily", "weekend"], default="daily",
-                        help="daily: one day. weekend: preview of the coming Saturday and Sunday")
+    parser.add_argument("--mode", choices=["daily", "weekend", "spotlight"], default="daily",
+                        help="daily: one day. weekend: preview of the coming Saturday and Sunday. "
+                             "spotlight: one dedicated slide for today's final (see SPOTLIGHT_LEVEL)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Render images and caption locally, do not push or post")
     parser.add_argument("--stories-only", action="store_true",
@@ -74,6 +76,22 @@ def run(argv: list[str] | None = None) -> int:
     total = sum(len(m) for _, m in day_matches)
     log.info("[%s/%s] %d matches across %s", cfg.profile, args.mode, total, ", ".join(d.isoformat() for d in days))
 
+    if args.mode == "spotlight":
+        game = pick_spotlight(day_matches[0][1], cfg.spotlight_level)
+        if not game:
+            log.info("No %s-level game today; no spotlight post.", cfg.spotlight_level)
+            return 0
+        log.info("Spotlight: %s v %s (%s)", game.home, game.away, game.marquee)
+        out_dir = Path(args.out)
+        stamp = f"{days[0].isoformat()}-spotlight"
+        paths = render_spotlight(game, days[0], tz_label, out_dir, stamp, spotlight_heading(game), handle=args.handle,
+                                 twelve_hour=cfg.twelve_hour, theme=settings.get("theme", "green"),
+                                 tagline=settings.get("tagline") or None)
+        caption = build_spotlight_caption(game, tz_label, cfg.hashtags, cfg.twelve_hour)
+        (out_dir / f"{stamp}-caption.txt").write_text(caption, encoding="utf-8")
+        story_paths = make_story_images(paths, settings.get("theme", "green"), 1) if cfg.post_stories else []
+        return publish(cfg, settings, args, paths, story_paths, caption)
+
     if total == 0 and not cfg.post_when_empty:
         log.info("Nothing scheduled and POST_WHEN_EMPTY is off; nothing to post.")
         return 0
@@ -97,8 +115,13 @@ def run(argv: list[str] | None = None) -> int:
                                 settings["caption_title"], stars)
     (out_dir / f"{stamp}-caption.txt").write_text(caption, encoding="utf-8")
     story_paths = make_story_images(paths, settings.get("theme", "green"), cfg.story_max) if cfg.post_stories else []
-    log.info("Rendered %d slide(s) and %d story image(s) to %s", len(paths), len(story_paths), out_dir)
+    return publish(cfg, settings, args, paths, story_paths, caption)
 
+
+def publish(cfg: Config, settings: dict, args: argparse.Namespace, paths: list[Path],
+            story_paths: list[Path], caption: str) -> int:
+    """Host the images, publish the feed post (unless --stories-only) and the Stories."""
+    log.info("Rendered %d slide(s) and %d story image(s) to %s", len(paths), len(story_paths), paths[0].parent)
     if args.dry_run:
         log.info("Dry run: skipping upload and Instagram publish.\n\n%s", caption)
         return 0
