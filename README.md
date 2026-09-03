@@ -26,7 +26,7 @@ soccer-instagram-bot/
   bot/data/us_broadcasters.json   where to watch each competition in the USA
   bot/refresh_token.py   renews the Instagram token
   .github/workflows/daily-post.yml      daily post
-  .github/workflows/refresh-token.yml   weekly token refresh
+  .github/workflows/refresh-token.yml   token refresh / reminder
 ```
 
 ## Setup
@@ -128,10 +128,12 @@ rights are only confirmed through the 2026 edition.
 
 ### 5. Token refresh (recommended)
 
-`.github/workflows/refresh-token.yml` runs every Monday. If a `SECRETS_PAT` secret exists
+`.github/workflows/refresh-token.yml` runs on October 31, two days before the current token
+expires (edit the cron date if you regenerate the token). If a `SECRETS_PAT` secret exists
 it calls Instagram's refresh endpoint, which extends the token another 60 days, and writes
 the new token back into the `IG_ACCESS_TOKEN` secret. Without `SECRETS_PAT` it opens a
-reminder issue instead, since the default Actions token is not allowed to edit secrets.
+reminder issue instead, since the default Actions token is not allowed to edit secrets. You
+can also run it by hand from the Actions tab at any time.
 
 To enable automatic refresh, create a fine-grained personal access token:
 
