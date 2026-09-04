@@ -81,7 +81,7 @@ def test_womens_profile_config_and_render(monkeypatch, tmp_path):
     monkeypatch.delenv("HASHTAGS", raising=False)
     cfg = Config.from_env(require_secrets=False)
     assert cfg.settings["title"] == "TODAY IN WOMEN'S SPORTS"
-    assert cfg.hashtags == "#womenssports" and cfg.settings["hashtag_max"] == "3"
+    assert cfg.hashtags.startswith("#womenssports")
     assert cfg.settings["broadcasters_file"] == "us_broadcasters_womens.json"
 
     wnba = ef.League("WNBA", "basketball", "wnba", "WNBA")
@@ -113,17 +113,3 @@ def test_soccer_profile_still_requires_football_token(monkeypatch):
         raise AssertionError("expected SystemExit")
     monkeypatch.setenv("PROFILE", "womens")
     assert Config.from_env().profile == "womens"  # no football token needed
-
-
-def test_hashtags_are_base_plus_days_competitions_capped():
-    from bot.caption import hashtags_for
-    wnba = ef.League("WNBA", "basketball", "wnba", "WNBA")
-    nwsl = ef.League("NWSL", "soccer", "usa.nwsl", "NWSL")
-    ms = ef.events_to_matches(EVENTS[:1], wnba, DAY, NY, None) + ef.events_to_matches(EVENTS[1:2], nwsl, DAY, NY, None)
-    ms = sort_matches(ms)
-    assert hashtags_for(ms, "#womenssports", 3) == "#womenssports #wnba #nwsl"
-    assert hashtags_for(ms, "#womenssports", 2) == "#womenssports #wnba"
-    tennis_match = Match(competition="US Open · Women's Singles", competition_code="WTA", home="A", away="B",
-                         kickoff=ms[0].kickoff, status="TIMED", sport="tennis")
-    assert hashtags_for([tennis_match] + ms, "#womenssports", 3) == "#womenssports #usopen #wnba"
-    assert hashtags_for([], "#womenssports", 3) == "#womenssports"

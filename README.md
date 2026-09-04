@@ -165,10 +165,8 @@ and generate its token), then add these repository secrets:
 | `IG_USER_ID_WOMENS` | the women's account's Instagram user id |
 | `IG_ACCESS_TOKEN_WOMENS` | its long-lived token |
 
-Optional variables: `IG_HANDLE_WOMENS`, `HASHTAGS_WOMENS` (the fixed tags; default
-`#womenssports`, then up to two tags for that day's competitions are added automatically,
-three in total), and `COMPETITIONS_WOMENS` (comma-separated codes from the table below;
-empty means all).
+Optional variables: `IG_HANDLE_WOMENS`, `HASHTAGS_WOMENS`, and `COMPETITIONS_WOMENS`
+(comma-separated codes from the table below; empty means all).
 
 | Code | League | Notes |
 | --- | --- | --- |
