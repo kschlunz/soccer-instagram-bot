@@ -8,7 +8,7 @@ import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from .caption import build_caption, build_spotlight_caption, build_weekend_caption
+from .caption import build_caption, build_spotlight_caption, build_weekend_caption, hashtags_for
 from .config import Config
 from .espn import enrich
 from .espn_fixtures import WOMENS_LEAGUES, build_matches
@@ -89,7 +89,8 @@ def run(argv: list[str] | None = None) -> int:
         paths = render_spotlight(game, days[0], tz_label, out_dir, stamp, spotlight_heading(game), handle=args.handle,
                                  twelve_hour=cfg.twelve_hour, theme=settings.get("theme", "green"),
                                  tagline=settings.get("tagline") or None)
-        caption = build_spotlight_caption(game, tz_label, cfg.hashtags, cfg.twelve_hour)
+        tags = hashtags_for([game], cfg.hashtags, int(settings.get("hashtag_max", 5)))
+        caption = build_spotlight_caption(game, tz_label, tags, cfg.twelve_hour)
         (out_dir / f"{stamp}-caption.txt").write_text(caption, encoding="utf-8")
         story_paths = make_story_images(paths, settings.get("theme", "green"), 1) if cfg.post_stories else []
         return publish(cfg, settings, args, paths, story_paths, caption)
@@ -109,11 +110,12 @@ def run(argv: list[str] | None = None) -> int:
     paths = render_days(day_matches, tz_label, out_dir, stamp, handle=args.handle, twelve_hour=cfg.twelve_hour,
                         title=title, theme=settings.get("theme", "green"), tagline=settings.get("tagline") or None,
                         featured_games=stars)
+    tags = hashtags_for([m for _, ms in day_matches for m in ms], cfg.hashtags, int(settings.get("hashtag_max", 5)))
     if args.mode == "weekend":
-        caption = build_weekend_caption(day_matches, tz_label, cfg.hashtags, cfg.twelve_hour,
+        caption = build_weekend_caption(day_matches, tz_label, tags, cfg.twelve_hour,
                                         settings["weekend_caption_title"], stars)
     else:
-        caption = build_caption(day_matches[0][1], days[0], tz_label, cfg.hashtags, cfg.twelve_hour,
+        caption = build_caption(day_matches[0][1], days[0], tz_label, tags, cfg.twelve_hour,
                                 settings["caption_title"], stars)
     (out_dir / f"{stamp}-caption.txt").write_text(caption, encoding="utf-8")
     story_paths = make_story_images(paths, settings.get("theme", "green"), cfg.story_max) if cfg.post_stories else []
