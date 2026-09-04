@@ -8,6 +8,33 @@ from .fixtures import Match
 
 MAX_CAPTION = 2200  # Instagram limit
 
+# Hashtag for each competition code, used to build a short, relevant tag line.
+COMPETITION_TAGS = {
+    "NWSL": "#nwsl", "WNBA": "#wnba", "WSL": "#wsl", "UWCL": "#uwcl", "WWC": "#fifawwc",
+    "WEURO": "#weuro", "WINTL": "#uswnt", "LIGAF": "#ligaf",
+    "NCAAWBB": "#ncaawbb", "NCAAWVB": "#ncaavb", "NCAAWSB": "#ncaasoftball",
+    "NCAAWH": "#ncaawhockey", "NCAAWLAX": "#ncaawlax",
+    "PL": "#premierleague", "PD": "#laliga", "BL1": "#bundesliga", "SA": "#seriea", "FL1": "#ligue1",
+    "CL": "#championsleague", "ELC": "#efl", "DED": "#eredivisie", "PPL": "#ligaportugal",
+    "BSA": "#brasileirao", "CLI": "#libertadores", "WC": "#worldcup", "EC": "#euro2028",
+}
+
+
+def hashtags_for(matches: Sequence[Match], base: str, max_tags: int) -> str:
+    """`base` tags first, then one tag per competition on the day (in schedule order) up to max_tags."""
+    tags = [t for t in base.split() if t.startswith("#")]
+    for m in matches:
+        if len(tags) >= max_tags:
+            break
+        if m.sport == "tennis":
+            tournament = m.competition.split("·")[0].strip().lower().replace(" ", "")
+            tag = f"#{tournament}"
+        else:
+            tag = COMPETITION_TAGS.get(m.competition_code)
+        if tag and tag not in tags:
+            tags.append(tag)
+    return " ".join(tags[:max_tags])
+
 
 def _match_lines(matches: Sequence[Match], twelve_hour: bool) -> list[str]:
     lines: list[str] = []

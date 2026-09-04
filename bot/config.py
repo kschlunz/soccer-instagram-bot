@@ -11,6 +11,7 @@ PROFILES: dict[str, dict[str, str]] = {
         "caption_title": "⚽ Today's matches",
         "images_subdir": "posts",
         "hashtags": "#soccer #football #matchday #fixtures #futbol",
+        "hashtag_max": "5",
         "broadcasters_file": "us_broadcasters.json",
         "theme": "green",
         "tagline": "",
@@ -21,7 +22,8 @@ PROFILES: dict[str, dict[str, str]] = {
         "title": "TODAY IN WOMEN'S SPORTS",
         "caption_title": "🏟️ Today in women's sports",
         "images_subdir": "posts-womens",
-        "hashtags": "#womenssports #nwsl #wnba #womenssoccer #watchwomenssports",
+        "hashtags": "#womenssports",
+        "hashtag_max": "3",   # #womenssports plus up to two tags for that day's competitions
         "broadcasters_file": "us_broadcasters_womens.json",
         "theme": "purple",
         "tagline": "What's on, when it's on",
