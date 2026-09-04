@@ -4,7 +4,7 @@ on:
   schedule:
     # October 31, 12:00 UTC: day 58 of the token generated on 2026-09-03.
     # Each refresh resets the 60-day expiry, so move this date after regenerating the token.
-    - cron: "0 12 31 10 *"
+    - cron: "17 12 31 10 *"
   workflow_dispatch:
 
 permissions:

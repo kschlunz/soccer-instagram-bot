@@ -4,7 +4,7 @@ on:
   schedule:
     # Daily 13:00 UTC = 9:00 AM New York (8:00 AM during standard time). Posts only when a
     # final (or SPOTLIGHT_LEVEL) game is on that day; otherwise exits quietly.
-    - cron: "0 13 * * *"
+    - cron: "9 13 * * *"
   workflow_dispatch:
     inputs:
       dry_run:

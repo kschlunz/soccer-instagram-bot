@@ -137,3 +137,58 @@ def wait_until_public(urls: Sequence[str], timeout: float = 120, interval: float
             if time.monotonic() > deadline:
                 raise RuntimeError(f"Images never became public: {pending}")
             time.sleep(interval)
+
+
+def marker_path(subdir: str, stamp: str) -> str:
+    return f"{subdir}/published/{stamp}.txt"
+
+
+def already_published(branch: str, subdir: str, stamp: str, remote: str = "origin") -> bool:
+    """True if a marker for this post (profile + date + mode) exists on the images branch."""
+    _git("fetch", remote, f"+refs/heads/{branch}:refs/remotes/{remote}/{branch}", check=False)
+    tip = _git("rev-parse", "--verify", "--quiet", f"refs/remotes/{remote}/{branch}", check=False)
+    if not tip:
+        return False
+    return subprocess.run(["git", "cat-file", "-e", f"{tip}:{marker_path(subdir, stamp)}"],
+                          capture_output=True).returncode == 0
+
+
+def record_published(branch: str, subdir: str, stamp: str, note: str, remote: str = "origin") -> None:
+    """Write the marker for this post. Best effort: a failure here must not fail the run."""
+    import logging
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            marker = Path(tmp) / "marker.txt"
+            marker.write_text(note + "\n", encoding="utf-8")
+            _publish_files([(marker, marker_path(subdir, stamp))], branch, remote,
+                           f"Mark {subdir} {stamp} as published")
+    except Exception as err:  # noqa: BLE001
+        logging.getLogger("soccer-bot.hosting").warning("Could not record the published marker: %s", err)
+
+
+def _publish_files(files: Sequence[tuple[Path, str]], branch: str, remote: str, message: str) -> None:
+    """Commit (local path, repo path) pairs onto `branch` with git plumbing, retrying on push races."""
+    for attempt in range(1, 4):
+        _git("fetch", remote, f"+refs/heads/{branch}:refs/remotes/{remote}/{branch}", check=False)
+        parent = _git("rev-parse", "--verify", "--quiet", f"refs/remotes/{remote}/{branch}", check=False) or None
+        with tempfile.TemporaryDirectory() as tmp:
+            env = dict(os.environ, GIT_INDEX_FILE=str(Path(tmp) / "index"))
+            env.setdefault("GIT_AUTHOR_NAME", "soccer-bot")
+            env.setdefault("GIT_AUTHOR_EMAIL", "soccer-bot@users.noreply.github.com")
+            env.setdefault("GIT_COMMITTER_NAME", env["GIT_AUTHOR_NAME"])
+            env.setdefault("GIT_COMMITTER_EMAIL", env["GIT_AUTHOR_EMAIL"])
+            if parent:
+                _git("read-tree", parent, env=env)
+            for local, rel in files:
+                blob = _git("hash-object", "-w", str(local), env=env)
+                _git("update-index", "--add", "--cacheinfo", f"100644,{blob},{rel}", env=env)
+            tree = _git("write-tree", env=env)
+            args = ["commit-tree", tree, "-m", message] + (["-p", parent] if parent else [])
+            commit = _git(*args, env=env)
+            result = subprocess.run(["git", "push", remote, f"{commit}:refs/heads/{branch}"],
+                                    capture_output=True, text=True)
+            if result.returncode == 0:
+                return
+            if attempt == 3:
+                raise RuntimeError(f"push failed: {result.stderr.strip()}")
+            time.sleep(3 * attempt)

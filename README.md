@@ -245,8 +245,14 @@ for the biggest marquee game every day.
 
 ### 9. Schedule
 
-`.github/workflows/daily-post.yml` runs at 11:00 UTC daily. Change the cron line to move
-it. You can also run it by hand from the Actions tab: **Daily matchday post > Run
+`.github/workflows/daily-post.yml` runs at 11:07 UTC daily with a backup entry at 11:47;
+the women's post runs at 11:23 with a backup at 12:03. Minutes are deliberately off the hour
+and half hour, which GitHub warns are its busiest moments for scheduled runs, when they can
+be delayed or dropped. After a successful feed post the bot writes a marker file
+(`<subdir>/published/<date>.txt`) to the images branch, and any later run for the same day
+and mode exits without posting, so the backup schedule never double-posts. A manual run can
+override that with the `force` input (`--force` on the command line). Change the cron lines
+to move the times. You can also run it by hand from the Actions tab: **Daily matchday post > Run
 workflow**, optionally with a date or in dry-run mode (which only uploads the rendered
 images as a workflow artifact so you can preview them).
 

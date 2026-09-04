@@ -2,8 +2,11 @@ name: Daily matchday post
 
 on:
   schedule:
-    # 11:00 UTC every day = 07:00 New York (06:00 during standard time). Adjust to taste.
-    - cron: "0 11 * * *"
+    # 11:07 UTC = 7:07 AM New York (6:07 AM during standard time). Off the top of the hour,
+    # which GitHub warns is its busiest moment for scheduled runs. The second entry is a
+    # backup 40 minutes later; the bot skips it if the first one already posted today.
+    - cron: "7 11 * * *"
+    - cron: "47 11 * * *"
   workflow_dispatch:
     inputs:
       date:
@@ -16,6 +19,10 @@ on:
         default: false
       stories_only:
         description: "Publish only the Stories, skip the feed post"
+        type: boolean
+        default: false
+      force:
+        description: "Post even if today's post already went out"
         type: boolean
         default: false
 
@@ -64,11 +71,13 @@ jobs:
           INPUT_DATE: ${{ inputs.date }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           INPUT_STORIES_ONLY: ${{ inputs.stories_only }}
+          INPUT_FORCE: ${{ inputs.force }}
         run: |
           ARGS=""
           if [ -n "$INPUT_DATE" ]; then ARGS="$ARGS --date $INPUT_DATE"; fi
           if [ "$INPUT_DRY_RUN" = "true" ]; then ARGS="$ARGS --dry-run"; fi
           if [ "$INPUT_STORIES_ONLY" = "true" ]; then ARGS="$ARGS --stories-only"; fi
+          if [ "$INPUT_FORCE" = "true" ]; then ARGS="$ARGS --force"; fi
           if [ -n "$IG_HANDLE" ]; then ARGS="$ARGS --handle $IG_HANDLE"; fi
           python -m bot.main $ARGS
 

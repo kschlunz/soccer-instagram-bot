@@ -2,8 +2,10 @@ name: Daily women's sports post
 
 on:
   schedule:
-    # 11:00 UTC every day = 07:30 New York (06:30 during standard time); staggered from the soccer post. Adjust to taste.
-    - cron: "30 11 * * *"
+    # 11:23 UTC = 7:23 AM New York (6:23 AM during standard time), staggered from the soccer
+    # post and off the half hour. Backup entry 40 minutes later; skipped if already posted.
+    - cron: "23 11 * * *"
+    - cron: "3 12 * * *"
   workflow_dispatch:
     inputs:
       date:
@@ -16,6 +18,10 @@ on:
         default: false
       stories_only:
         description: "Publish only the Stories, skip the feed post"
+        type: boolean
+        default: false
+      force:
+        description: "Post even if today's post already went out"
         type: boolean
         default: false
 
@@ -64,11 +70,13 @@ jobs:
           INPUT_DATE: ${{ inputs.date }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           INPUT_STORIES_ONLY: ${{ inputs.stories_only }}
+          INPUT_FORCE: ${{ inputs.force }}
         run: |
           ARGS=""
           if [ -n "$INPUT_DATE" ]; then ARGS="$ARGS --date $INPUT_DATE"; fi
           if [ "$INPUT_DRY_RUN" = "true" ]; then ARGS="$ARGS --dry-run"; fi
           if [ "$INPUT_STORIES_ONLY" = "true" ]; then ARGS="$ARGS --stories-only"; fi
+          if [ "$INPUT_FORCE" = "true" ]; then ARGS="$ARGS --force"; fi
           if [ -n "$IG_HANDLE" ]; then ARGS="$ARGS --handle $IG_HANDLE"; fi
           python -m bot.main $ARGS
 

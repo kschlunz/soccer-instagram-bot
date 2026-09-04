@@ -13,7 +13,7 @@ from .config import Config
 from .espn import enrich
 from .espn_fixtures import WOMENS_LEAGUES, build_matches
 from .fixtures import BROADCASTERS_FILE, Match, fetch_matches, load_broadcasters, normalise
-from .hosting import publish_images, wait_until_public
+from .hosting import already_published, publish_images, record_published, wait_until_public
 from .instagram import InstagramClient, InstagramError
 from .marquee import featured, tag_marquee
 from .render import make_story_images, render_days, render_spotlight
@@ -32,6 +32,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Render images and caption locally, do not push or post")
     parser.add_argument("--stories-only", action="store_true",
                         help="Skip the feed post and publish only the Stories")
+    parser.add_argument("--force", action="store_true",
+                        help="Post even if a post for this day/mode was already published")
     parser.add_argument("--out", default="out", help="Output directory for images (default: out)")
     parser.add_argument("--sample", help="Use a saved football-data.org JSON response instead of the API")
     parser.add_argument("--handle", help="Instagram handle to print in the image footer, e.g. @dailykickoffs")
@@ -126,6 +128,11 @@ def publish(cfg: Config, settings: dict, args: argparse.Namespace, paths: list[P
         log.info("Dry run: skipping upload and Instagram publish.\n\n%s", caption)
         return 0
 
+    stamp = paths[0].stem.rsplit("-", 1)[0]  # e.g. 2026-09-04, 2026-09-05-weekend, 2026-09-12-spotlight
+    if not args.stories_only and not args.force and already_published(cfg.images_branch, settings["images_subdir"], stamp):
+        log.info("A post for %s already went out (backup schedule or re-run); nothing to do. Use --force to repost.", stamp)
+        return 0
+
     urls = publish_images(paths + story_paths, cfg.images_branch, keep_days=cfg.keep_days,
                           subdir=settings["images_subdir"])
     log.info("Hosted images:\n  %s", "\n  ".join(urls))
@@ -136,6 +143,7 @@ def publish(cfg: Config, settings: dict, args: argparse.Namespace, paths: list[P
     if not args.stories_only:
         media_id = client.post_images(feed_urls, caption)
         log.info("Published Instagram feed post %s", media_id)
+        record_published(cfg.images_branch, settings["images_subdir"], stamp, f"media {media_id}")
 
     failures = 0
     for url in story_urls:
